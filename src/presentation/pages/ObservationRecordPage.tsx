@@ -11,7 +11,7 @@ import { useTestPlan } from "../context/TestPlanContext";
 import { ClipboardCheck, Plus, Trash2, Timer, AlertCircle, User, CheckCircle2 } from "lucide-react";
 
 export function ObservationRecordPage() {
-  const { data, updateObservations, addObservation, addMultipleObservations } = useTestPlan();
+  const { data, updateObservations, addObservation } = useTestPlan();
 
   const handleObsChange = (index: number, field: string, value: string) => {
     const newObs = [...data.observations];

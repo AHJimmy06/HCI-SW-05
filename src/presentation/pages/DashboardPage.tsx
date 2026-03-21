@@ -4,7 +4,7 @@ import { useTestPlan } from "../context/TestPlanContext";
 import { Plus, Trash2, Info, LayoutDashboard, ClipboardList, Users, Settings } from "lucide-react";
 
 export function DashboardPage() {
-  const { data, updatePlan, updateTasks, addTask, addMultipleTasks } = useTestPlan();
+  const { data, updatePlan, updateTasks, addTask } = useTestPlan();
 
   const handleTaskChange = (index: number, field: string, value: string) => {
     const newTasks = [...data.tasks];
