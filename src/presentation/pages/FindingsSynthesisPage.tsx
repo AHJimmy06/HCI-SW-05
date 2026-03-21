@@ -15,11 +15,20 @@ import {
   SupabaseFindingRepository,
   SupabaseObservationRepository
 } from "../../infrastructure/repositories/SupabaseRepositories";
-import { Lightbulb, Plus, Trash2, Save, ArrowRight, Loader2 } from "lucide-react";
+import { Lightbulb, Plus, Trash2, Save, ArrowRight, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 export function FindingsSynthesisPage() {
   const { data, updateFindings, addFinding, resetData } = useTestPlan();
   const [loading, setLoading] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error' | null, message: string | null }>({ type: null, message: null });
+
+  // Validación de IHC: Prevenir errores desactivando acciones incompletas
+  const isDataComplete = () => {
+    const hasPlan = data.plan.product_name.trim() !== "" && data.plan.objective.trim() !== "";
+    const hasTasks = data.tasks.some((t: any) => t.scenario.trim() !== "");
+    const hasObservations = data.observations.some((o: any) => o.participant_name.trim() !== "");
+    return hasPlan && hasTasks && hasObservations;
+  };
 
   const handleFindingChange = (index: number, field: string, value: string) => {
     const newFindings = [...data.findings];
@@ -90,55 +99,48 @@ export function FindingsSynthesisPage() {
         }
       }
 
-      alert("¡Todos los datos se han guardado correctamente!");
-      resetData();
+      setSaveStatus({ type: 'success', message: "¡Prueba de usabilidad guardada con éxito en la base de datos!" });
+      setTimeout(() => {
+        resetData();
+        setSaveStatus({ type: null, message: null });
+      }, 3000);
     } catch (error: any) {
       console.error(error);
-      alert("Error al guardar: " + error.message);
+      setSaveStatus({ type: 'error', message: "Error al guardar: " + error.message });
     } finally {
       setLoading(false);
     }
   };
 
+  const canSave = isDataComplete();
+
   return (
     <div className="flex flex-col min-h-full">
+      {/* Banner de Notificación Profesional (Reemplaza a los alerts feos) */}
+      {saveStatus.message && (
+        <div className={`fixed top-24 right-6 z-50 animate-in slide-in-from-right duration-300 p-4 rounded-2xl shadow-medium border flex items-center gap-3 max-w-md ${
+          saveStatus.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-accent-50 border-accent-200 text-accent-800'
+        }`}>
+          {saveStatus.type === 'success' ? <CheckCircle2 className="text-green-600" /> : <AlertTriangle className="text-accent-600" />}
+          <p className="text-sm font-bold">{saveStatus.message}</p>
+        </div>
+      )}
+
       {/* Hero Section */}
       <header className="px-6 py-8 border-b border-surface-100 bg-brand-50/30">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex-1">
+          <div>
             <h1 className="text-2xl font-bold text-brand-900 flex items-center gap-2">
               <Lightbulb className="text-brand-600" aria-hidden="true" />
               Síntesis y Plan de Mejora
             </h1>
-            <p className="mt-1 text-surface-600 max-w-2xl text-sm">
-              Transforma las observaciones en hallazgos accionables. Prioriza los problemas y define recomendaciones de diseño.
+            <p className="mt-1 text-surface-600 max-w-2xl">
+              Transforma las observaciones en hallazgos accionables. Prioriza los problemas detectados y define recomendaciones de diseño estratégicas.
             </p>
           </div>
-          
-          <div className="flex items-center gap-3">
-             <Button 
-                onClick={addFinding} 
-                variant="outline"
-                className="border-brand-200 text-brand-700 hover:bg-brand-50 shadow-sm hidden sm:flex items-center gap-2"
-              >
-                <Plus size={18} />
-                Hallazgo
-              </Button>
-
-              <Button 
-                onClick={handleSaveAll} 
-                disabled={loading}
-                className="bg-brand-100 hover:bg-brand-200 text-black px-6 py-5 rounded-xl font-bold shadow-soft border border-brand-300 transition-all hover:shadow-medium active:scale-95 disabled:opacity-50 flex items-center justify-center min-w-[140px]"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin mr-2 text-black" size={18} />
-                ) : (
-                  <Save className="mr-2 text-black" size={18} />
-                )}
-                <span className="text-black font-bold">
-                  {loading ? "Guardando..." : "Guardar Todo"}
-                </span>
-              </Button>
+          <div className="flex items-center gap-2 text-sm text-brand-700 font-medium bg-brand-100/50 px-3 py-1.5 rounded-full border border-brand-200">
+            <AlertTriangle size={16} />
+            HCI Best Practice: Prioriza por severidad y frecuencia
           </div>
         </div>
       </header>
@@ -257,29 +259,48 @@ export function FindingsSynthesisPage() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center py-10 space-y-6">
-          <div className="max-w-md text-center">
-            <p className="text-sm text-surface-500 mb-6">
+        <div className="flex flex-col items-center justify-center py-10 space-y-6 w-full">
+          <div className="max-w-md w-full text-center flex flex-col items-center">
+            <p className="text-sm text-surface-500 mb-8">
               Al guardar, se consolidará el plan de prueba, las observaciones y estos hallazgos en la base de datos de Supabase para su posterior análisis en el Dashboard.
             </p>
+            
             <Button 
               onClick={handleSaveAll} 
-              disabled={loading}
-              className="bg-brand-600 hover:bg-brand-700 text-white px-10 py-6 rounded-2xl text-lg font-bold shadow-medium transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:scale-100"
+              disabled={loading || !canSave}
+              className={`px-10 py-8 rounded-2xl text-lg font-bold shadow-medium transition-all flex items-center justify-center gap-3 min-w-[280px] ${
+                canSave 
+                  ? "bg-brand-600 hover:bg-brand-700 text-white hover:scale-[1.02] active:scale-95 shadow-medium" 
+                  : "bg-surface-100 text-surface-400 border-surface-200 cursor-not-allowed opacity-60"
+              }`}
               aria-live="polite"
             >
               {loading ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="animate-spin" size={20} />
-                  Sincronizando...
-                </span>
+                <>
+                  <Loader2 className="animate-spin text-current" size={24} />
+                  <span>Sincronizando...</span>
+                </>
               ) : (
-                <span className="flex items-center gap-2">
-                  <Save size={20} />
-                  Finalizar y Guardar Todo
-                </span>
+                <>
+                  <Save className="text-current" size={24} />
+                  <span>Finalizar y Guardar Todo</span>
+                </>
               )}
             </Button>
+            {!canSave && (
+              <div className="mt-6 p-4 bg-accent-50 border border-accent-100 rounded-xl max-w-sm mx-auto animate-in fade-in zoom-in-95">
+                <p className="text-xs text-accent-700 font-bold flex items-center justify-center gap-1 mb-2">
+                  <AlertTriangle size={14} />
+                  Faltan datos obligatorios:
+                </p>
+                <ul className="text-[10px] text-accent-600 space-y-1 list-disc pl-5 text-left">
+                  {!data.plan.product_name && <li>Nombre del Producto (Vista Plan)</li>}
+                  {!data.plan.objective && <li>Objetivo del Test (Vista Plan)</li>}
+                  {!data.tasks.some((t:any) => t.scenario.trim() !== "") && <li>Definir al menos una Tarea (Vista Plan)</li>}
+                  {!data.observations.some((o:any) => o.participant_name.trim() !== "") && <li>Registrar al menos un Participante (Vista Registro)</li>}
+                </ul>
+              </div>
+            )}
           </div>
           
           <div className="flex items-center gap-4 text-xs font-medium text-surface-400 uppercase tracking-widest">

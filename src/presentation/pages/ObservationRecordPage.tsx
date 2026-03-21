@@ -54,36 +54,17 @@ export function ObservationRecordPage() {
               <User size={18} />
             </div>
             <h2 className="text-xl font-bold text-surface-900">Datos de la Sesión</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-surface-400 uppercase mr-2 hidden sm:inline">Carga rápida:</span>
+            </div>
             <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => addMultipleObservations(1)}
-              className="border-brand-200 text-brand-600 hover:bg-brand-50"
+            onClick={addObservation} 
+            variant="outline"
+            className="border-brand-200 text-brand-700 hover:bg-brand-50 shadow-soft flex items-center gap-2"
+            aria-label="Agregar un nuevo registro de observación"
             >
-              +1
+            <Plus size={18} />
+            Agregar Participante / Observación
             </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => addMultipleObservations(3)}
-              className="border-brand-200 text-brand-600 hover:bg-brand-50 mr-4"
-            >
-              +3
-            </Button>
-            <Button 
-              onClick={addObservation} 
-              className="bg-brand-600 hover:bg-brand-700 text-white shadow-soft flex items-center gap-2"
-              aria-label="Agregar un nuevo registro de observación"
-            >
-              <Plus size={18} />
-              <span className="hidden sm:inline">Nuevo Registro</span>
-              <span className="sm:hidden">Nuevo</span>
-            </Button>
-          </div>
-        </div>
+            </div>
 
         <div className="rounded-xl border border-surface-200 overflow-hidden shadow-soft bg-white">
           <div className="overflow-x-auto">
