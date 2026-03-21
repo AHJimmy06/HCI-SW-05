@@ -109,6 +109,7 @@ export function DashboardPage() {
               <Input 
                 id="test_date"
                 type="date" 
+                min={new Date().toISOString().split('T')[0]}
                 value={data.plan.test_date}
                 onChange={(e) => updatePlan('test_date', e.target.value)}
                 className="bg-white border-surface-300 focus:ring-brand-500" 
@@ -138,34 +139,15 @@ export function DashboardPage() {
                 2. Tareas del test
               </h2>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-surface-400 uppercase mr-2 hidden sm:inline">Carga rápida:</span>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => addMultipleTasks(1)}
-                className="border-brand-200 text-brand-600 hover:bg-brand-50"
-              >
-                +1
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => addMultipleTasks(3)}
-                className="border-brand-200 text-brand-600 hover:bg-brand-50 mr-4"
-              >
-                +3
-              </Button>
-              <Button 
-                onClick={addTask} 
-                className="bg-brand-600 hover:bg-brand-700 text-white shadow-soft flex items-center gap-2"
-                aria-label="Agregar una nueva tarea al test"
-              >
-                <Plus size={18} />
-                <span className="hidden sm:inline">Agregar Tarea</span>
-                <span className="sm:hidden">Tarea</span>
-              </Button>
-            </div>
+            <Button 
+              onClick={addTask} 
+              variant="outline"
+              className="border-brand-200 text-brand-700 hover:bg-brand-50 shadow-soft flex items-center gap-2"
+              aria-label="Agregar una nueva tarea al test"
+            >
+              <Plus size={18} />
+              Agregar Tarea
+            </Button>
           </div>
 
           <div className="rounded-xl border border-surface-200 overflow-hidden shadow-soft bg-white">
