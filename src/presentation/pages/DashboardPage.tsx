@@ -149,18 +149,9 @@ export function DashboardPage() {
               Visualiza los KPIs clave de tus pruebas de usabilidad. Toma decisiones basadas en datos empíricos de rendimiento y satisfacción.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="hidden lg:flex items-center gap-2 text-sm text-brand-700 font-medium bg-brand-100/50 px-3 py-1.5 rounded-full border border-brand-200">
-              <TrendingUp size={16} />
-              HCI: Visualiza tendencias
-            </div>
-            <Button 
-              onClick={handleNewPlan}
-              className="bg-brand-600 hover:bg-brand-700 text-white shadow-soft flex items-center gap-2"
-            >
-              <Plus size={18} />
-              Nueva Prueba
-            </Button>
+          <div className="flex items-center gap-2 text-sm text-brand-700 font-medium bg-brand-100/50 px-3 py-1.5 rounded-full border border-brand-200">
+            <TrendingUp size={16} />
+            HCI: Visualiza tendencias
           </div>
         </div>
       </header>
