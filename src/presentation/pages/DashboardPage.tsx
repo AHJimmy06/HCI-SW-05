@@ -8,7 +8,7 @@ import {
   BarChart3, TrendingUp, Clock, AlertOctagon, Users, 
   FileBarChart, Loader2, Info, CheckCircle2,
   ChevronUp, ClipboardList, Lightbulb, FileText,
-  Plus, Edit, Eye
+  Edit, Eye
 } from "lucide-react";
 
 export function DashboardPage() {
