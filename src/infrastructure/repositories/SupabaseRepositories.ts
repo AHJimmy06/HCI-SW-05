@@ -37,7 +37,7 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
   async getFullPlan(id: string): Promise<any> {
     const { data: plan, error: planError } = await supabase
       .from('test_plans')
-      .select('*, tasks(*), findings(*)')
+      .select('*, tasks(*), findings(*), observations(*)')
       .eq('id', id)
       .single();
 

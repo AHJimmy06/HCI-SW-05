@@ -30,11 +30,11 @@ export function Layout() {
               {/* Navigation Links */}
               <nav className="flex items-center gap-1 md:gap-4 overflow-x-auto no-scrollbar" aria-label="Navegación principal">
                 {[
-                  { to: "/", label: "Plan" },
+                  { to: "/", label: "Dashboard" },
+                  { to: "/plan", label: "Plan" },
                   { to: "/guia", label: "Guía" },
                   { to: "/registro", label: "Registro" },
-                  { to: "/sintesis", label: "Síntesis" },
-                  { to: "/reportes", label: "Dashboard" }
+                  { to: "/sintesis", label: "Síntesis" }
                 ].map((item) => (
                   <NavLink
                     key={item.to}

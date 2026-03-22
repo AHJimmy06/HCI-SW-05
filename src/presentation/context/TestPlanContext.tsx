@@ -33,6 +33,7 @@ interface TestPlanContextType {
   addFinding: () => void;
   addMultipleTasks: (count: number) => void;
   addMultipleObservations: (count: number) => void;
+  loadFullPlan: (plan: FullTestData) => void;
   resetData: () => void;
 }
 
@@ -109,6 +110,7 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
     return { ...prev, observations: newObs };
   });
 
+  const loadFullPlan = (planData: FullTestData) => setData(planData);
   const resetData = () => setData(initialData);
 
   return (
@@ -116,7 +118,8 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
       data, updatePlan, updateTasks, addTask, 
       updateObservations, addObservation, 
       updateFindings, addFinding, 
-      addMultipleTasks, addMultipleObservations, resetData 
+      addMultipleTasks, addMultipleObservations, resetData,
+      loadFullPlan
     }}>
       {children}
     </TestPlanContext.Provider>
