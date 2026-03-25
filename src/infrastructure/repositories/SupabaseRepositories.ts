@@ -82,9 +82,14 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
 
 export class SupabaseParticipantRepository implements IParticipantRepository {
   async saveAll(participants: Partial<Participant>[]): Promise<Participant[]> {
+    // Patrón Hotfix: Borrar antiguos del plan y reinsertar para evitar errores de ON CONFLICT
+    if (participants.length > 0 && participants[0].test_plan_id) {
+      await supabase.from('participants').delete().eq('test_plan_id', participants[0].test_plan_id);
+    }
+
     const { data, error } = await supabase
       .from('participants')
-      .upsert(participants, { onConflict: 'test_plan_id, name' })
+      .insert(participants)
       .select();
 
     if (error) throw new Error(error.message);
@@ -104,9 +109,14 @@ export class SupabaseParticipantRepository implements IParticipantRepository {
 
 export class SupabaseTaskRepository implements ITaskRepository {
   async saveAll(tasks: Partial<Task>[]): Promise<void> {
+    // Patrón Hotfix: Borrar antiguos del plan y reinsertar
+    if (tasks.length > 0 && tasks[0].test_plan_id) {
+      await supabase.from('tasks').delete().eq('test_plan_id', tasks[0].test_plan_id);
+    }
+
     const { error } = await supabase
       .from('tasks')
-      .upsert(tasks, { onConflict: 'test_plan_id, task_label' });
+      .insert(tasks);
 
     if (error) throw new Error(error.message);
   }

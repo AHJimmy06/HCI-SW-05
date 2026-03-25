@@ -32,7 +32,8 @@ CREATE TABLE tasks (
     main_metric TEXT,
     success_criteria TEXT,
     follow_up_question TEXT,
-    order_index INT DEFAULT 0
+    order_index INT DEFAULT 0,
+    CONSTRAINT tasks_test_plan_id_task_label_key UNIQUE (test_plan_id, task_label)
 );
 
 -- 3. Tabla de Participantes
@@ -40,7 +41,8 @@ CREATE TABLE participants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     test_plan_id UUID REFERENCES test_plans(id) ON DELETE CASCADE,
     name TEXT,
-    profile TEXT
+    profile TEXT,
+    CONSTRAINT participants_test_plan_id_name_key UNIQUE (test_plan_id, name)
 );
 
 -- 4. Tabla de Observaciones (Registro de Usabilidad)
@@ -71,53 +73,7 @@ CREATE TABLE findings (
     status TEXT CHECK (status IN ('Pendiente', 'En Progreso', 'Resuelto')) DEFAULT 'Pendiente'
 );
 
--- 6. Vista para el Dashboard (Cálculo automático de KPIs) - VERSIÓN INICIAL
-CREATE OR REPLACE VIEW dashboard_metrics AS
-SELECT 
-    test_plan_id,
-    COUNT(id) AS total_observations,
-    SUM(CASE WHEN success THEN 1 ELSE 0 END) AS successful_tasks,
-    ROUND(AVG(time_seconds), 2) AS avg_time_seconds,
-    SUM(errors_count) AS total_errors,
-    ROUND((SUM(CASE WHEN success THEN 1 ELSE 0 END)::DECIMAL / NULLIF(COUNT(id), 0)) * 100, 2) AS success_rate
-FROM observations
-GROUP BY test_plan_id;
-
---------------------------------------------------------------------------------
--- MODIFICACIONES Y ACTUALIZACIONES
---------------------------------------------------------------------------------
-
--- FECHA: 2026-03-24
--- DESCRIPCIÓN: Actualización de la vista dashboard_metrics.
--- 1. product_name: Ahora concatena el Nombre del Producto + Módulo para mayor claridad visual.
--- 2. test_date: Se garantiza que siempre exista una fecha usando COALESCE (test_date -> created_at -> fecha actual).
-
--- Eliminamos la vista anterior para poder cambiar la estructura de columnas
-DROP VIEW IF EXISTS dashboard_metrics;
-
-CREATE OR REPLACE VIEW dashboard_metrics AS
-SELECT 
-    tp.id AS test_plan_id,
-    -- Concatenación de Producto y Módulo
-    (tp.product_name || COALESCE(' : ' || tp.module_name, '')) AS product_name,
-    -- Garantía de fecha: Prioriza fecha del test, luego creación, luego hoy
-    COALESCE(tp.test_date, tp.created_at::date, CURRENT_DATE) AS test_date,
-    COUNT(o.id) AS total_observations,
-    SUM(CASE WHEN o.success THEN 1 ELSE 0 END) AS successful_tasks,
-    ROUND(AVG(o.time_seconds), 2) AS avg_time_seconds,
-    SUM(o.errors_count) AS total_errors,
-    ROUND((SUM(CASE WHEN o.success THEN 1 ELSE 0 END)::DECIMAL / NULLIF(COUNT(o.id), 0)) * 100, 2) AS success_rate
-FROM test_plans tp
-LEFT JOIN observations o ON tp.id = o.test_plan_id
-GROUP BY tp.id, tp.product_name, tp.module_name, tp.test_date, tp.created_at;
-
--- FECHA: 2026-03-24 (Update 2)
--- DESCRIPCIÓN: Implementación de Soft Delete para planes de prueba.
--- 1. Añadimos columna deleted_at a test_plans.
--- 2. Refiltramos la vista dashboard_metrics para ocultar planes eliminados.
-
-ALTER TABLE test_plans ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
-
+-- 6. Vista para el Dashboard (Cálculo automático de KPIs)
 CREATE OR REPLACE VIEW dashboard_metrics AS
 SELECT 
     tp.id AS test_plan_id,
@@ -132,3 +88,13 @@ FROM test_plans tp
 LEFT JOIN observations o ON tp.id = o.test_plan_id
 WHERE tp.deleted_at IS NULL
 GROUP BY tp.id, tp.product_name, tp.module_name, tp.test_date, tp.created_at;
+
+--------------------------------------------------------------------------------
+-- MODIFICACIONES Y ACTUALIZACIONES
+--------------------------------------------------------------------------------
+
+ALTER TABLE test_plans ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
+
+-- Restricciones de unicidad para soporte de Hotfix v1.0.1
+ALTER TABLE tasks ADD CONSTRAINT tasks_test_plan_id_task_label_key UNIQUE (test_plan_id, task_label);
+ALTER TABLE participants ADD CONSTRAINT participants_test_plan_id_name_key UNIQUE (test_plan_id, name);
