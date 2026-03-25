@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { SupabaseTestPlanRepository } from "../../infrastructure/repositories/SupabaseRepositories";
 import type { DashboardMetrics } from "../../domain/entities/types";
@@ -6,10 +6,12 @@ import { useTestPlan } from "../context/TestPlanContext";
 import { Button } from "@/components/ui/button";
 import { 
   BarChart3, TrendingUp, Clock, AlertOctagon, Users, 
-  FileBarChart, Loader2, Info, CheckCircle2,
-  ChevronUp, ClipboardList, Lightbulb, FileText,
-  Edit, Eye
+  FileBarChart, Loader2,
+  ChevronUp, ClipboardList, FileText,
+  Edit, Eye, Plus, Trash2, AlertTriangle, Download, Info
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -20,21 +22,35 @@ export function DashboardPage() {
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [planDetails, setPlanDetails] = useState<Record<string, any>>({});
   const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const detailsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        setError(null);
-        const repo = new SupabaseTestPlanRepository();
-        const data = await repo.getAllMetrics();
-        setMetrics(Array.isArray(data) ? data : []);
-      } catch (err: any) {
-        console.error("Error al cargar métricas", err);
-        setError(err.message || "Error al conectar con la base de datos.");
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (expandedPlan && detailsRef.current) {
+      const timeoutId = window.requestAnimationFrame(() => {
+        detailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return () => window.cancelAnimationFrame(timeoutId);
+    }
+  }, [expandedPlan]);
+
+  const fetchMetrics = async () => {
+    try {
+      setError(null);
+      const repo = new SupabaseTestPlanRepository();
+      const data = await repo.getAllMetrics();
+      setMetrics(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      console.error("Error al cargar métricas", err);
+      setError(err.message || "Error al conectar con la base de datos.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchMetrics();
   }, []);
 
@@ -59,14 +75,82 @@ export function DashboardPage() {
     setExpandedPlan(planId);
   };
 
+  const generatePDF = async (planId: string) => {
+    let details = planDetails[planId];
+    
+    if (!details) {
+      const repo = new SupabaseTestPlanRepository();
+      details = await repo.getFullPlan(planId);
+    }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(22);
+    doc.setTextColor(15, 23, 42); 
+    doc.text("Reporte de Usabilidad", 14, 20);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 116, 139); 
+    doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, 28);
+    doc.line(14, 32, pageWidth - 14, 32);
+
+    doc.setFontSize(16);
+    doc.setTextColor(37, 99, 235); 
+    doc.text("1. Información General", 14, 45);
+    
+    autoTable(doc, {
+      startY: 50,
+      head: [['Campo', 'Detalle']],
+      body: [
+        ['Producto', details.product_name || 'N/A'],
+        ['Módulo', details.module_name || 'N/A'],
+        ['Objetivo', details.objective || 'N/A'],
+        ['Perfil Usuario', details.user_profile || 'N/A'],
+        ['Fecha Test', details.test_date || 'N/A'],
+        ['Moderador', details.moderator_name || 'N/A'],
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [37, 99, 235] },
+    });
+
+    if (details.findings && details.findings.length > 0) {
+      doc.setFontSize(16);
+      doc.text("2. Síntesis de Hallazgos", 14, (doc as any).lastAutoTable.finalY + 15);
+      
+      autoTable(doc, {
+        startY: (doc as any).lastAutoTable.finalY + 20,
+        head: [['Problema', 'Gravedad', 'Prioridad', 'Recomendación']],
+        body: details.findings.map((f: any) => [
+          f.problem,
+          f.severity,
+          f.priority,
+          f.recommendation
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [15, 23, 42] },
+      });
+    }
+
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Usability Dashboard - Página ${i} de ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+    }
+
+    doc.save(`Reporte_Usabilidad_${details.product_name || 'Plan'}.pdf`);
+  };
+
   const handleEdit = async (planId: string) => {
     try {
       setLoadingDetails(planId);
       const repo = new SupabaseTestPlanRepository();
       const details = await repo.getFullPlan(planId);
       
-      // Mapeo básico para asegurar que cumple con FullTestData
       const mappedData = {
+        test_plan_id: planId,
         plan: {
           product_name: details.product_name || '',
           module_name: details.module_name || '',
@@ -83,14 +167,35 @@ export function DashboardPage() {
           closing_confusing: details.closing_confusing || '',
           closing_change: details.closing_change || '',
         },
-        tasks: details.tasks || [],
+        tasks: (details.tasks || []).map((t: any) => ({
+          task_label: t.task_label || '',
+          scenario: t.scenario || '',
+          expected_result: t.expected_result || '',
+          main_metric: t.main_metric || '',
+          success_criteria: t.success_criteria || '',
+          follow_up_question: t.follow_up_question || ''
+        })),
         observations: (details.observations || []).map((o: any) => ({
           ...o,
+          participant_name: o.participants?.name || '',
+          participant_profile: o.participants?.profile || '',
+          task_label: o.tasks?.task_label || '',
           success: o.success ? 'Si' : 'No',
           time_seconds: o.time_seconds?.toString() || '',
-          errors_count: o.errors_count?.toString() || ''
+          errors_count: o.errors_count?.toString() || '',
+          detected_problem: o.detected_problem || '',
+          severity: o.severity || 'Baja',
+          proposed_improvement: o.proposed_improvement || ''
         })),
-        findings: details.findings || []
+        findings: (details.findings || []).map((f: any) => ({
+          ...f,
+          problem: f.problem || '',
+          evidence: f.evidence || '',
+          severity: f.severity || '',
+          recommendation: f.recommendation || '',
+          priority: f.priority || 'Media',
+          status: f.status || 'Pendiente'
+        }))
       };
       
       loadFullPlan(mappedData);
@@ -102,302 +207,202 @@ export function DashboardPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    setIsDeleting(true);
+    try {
+      const repo = new SupabaseTestPlanRepository();
+      await repo.delete(deleteConfirm);
+      setDeleteConfirm(null);
+      await fetchMetrics();
+    } catch (err) {
+      console.error("Error al eliminar plan", err);
+      alert("No se pudo eliminar el plan.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleNewPlan = () => {
     resetData();
     navigate("/plan");
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 p-10 animate-in fade-in duration-500">
-        <Loader2 className="h-10 w-10 text-brand-600 animate-spin" />
-        <p className="text-surface-600 font-medium">Analizando datos de usabilidad...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 p-10 text-center animate-in fade-in duration-500">
-        <div className="h-16 w-16 bg-accent-50 rounded-full flex items-center justify-center text-accent-600 mb-2">
-          <AlertOctagon size={32} />
-        </div>
-        <h2 className="text-xl font-bold text-surface-900">Error de Conexión</h2>
-        <p className="text-surface-600 max-w-md">{error}</p>
-        <Button 
-          onClick={() => window.location.reload()} 
-          variant="outline"
-          className="mt-4 border-surface-200"
-        >
-          Reintentar cargar
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col min-h-full">
-      {/* Hero Section */}
-      <header className="px-6 py-8 border-b border-surface-100 bg-brand-50/30">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-brand-900 flex items-center gap-2">
-              <BarChart3 className="text-brand-600" aria-hidden="true" />
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 text-center">
+              <div className="h-16 w-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertTriangle size={32} aria-hidden="true" />
+              </div>
+              <h3 className="text-xl font-semibold text-slate-900 mb-2">¿Eliminar este plan?</h3>
+              <p className="text-sm text-slate-700 mb-8 leading-relaxed font-medium">
+                Esta acción no se puede deshacer de forma sencilla desde el panel.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button variant="outline" onClick={() => setDeleteConfirm(null)} disabled={isDeleting} className="flex-1 rounded-xl py-6 font-semibold border-slate-300 text-slate-700">
+                  Cancelar
+                </Button>
+                <Button onClick={handleDelete} disabled={isDeleting} className="flex-1 rounded-xl py-6 bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors">
+                  {isDeleting ? <Loader2 className="animate-spin" size={18} /> : <Trash2 size={18} aria-hidden="true" />}
+                  Sí, eliminar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <header className="px-6 py-8 border-b border-surface-100 bg-slate-50">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex-1">
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <BarChart3 className="text-primary" aria-hidden="true" size={28} />
               Dashboard de Resultados
             </h1>
-            <p className="mt-1 text-surface-600 max-w-2xl">
-              Visualiza los KPIs clave de tus pruebas de usabilidad. Toma decisiones basadas en datos empíricos de rendimiento y satisfacción.
+            <p className="mt-1 text-slate-700 max-w-2xl font-medium">
+              Visualiza los KPIs clave de tus pruebas de usabilidad basados en datos empíricos.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-brand-700 font-medium bg-brand-100/50 px-3 py-1.5 rounded-full border border-brand-200">
-            <TrendingUp size={16} />
-            HCI: Visualiza tendencias
+          
+          <div className="flex items-center gap-4 shrink-0">
+            <Button 
+              onClick={handleNewPlan} 
+              className="bg-primary hover:bg-primary/90 text-white font-semibold px-8 py-6 rounded-2xl shadow-lg shadow-primary/20 transition-all flex items-center gap-3 active:scale-95"
+            >
+              <Plus size={20} strokeWidth={2.5} aria-hidden="true" />
+              <span className="tracking-wide">CREAR NUEVO PLAN</span>
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="p-6 space-y-12">
-        {metrics.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 px-6 text-center border-2 border-dashed border-surface-200 rounded-2xl bg-surface-50/50 animate-in zoom-in-95 duration-500">
-            <div className="h-16 w-16 bg-white rounded-full flex items-center justify-center shadow-soft mb-4">
-              <FileBarChart className="text-surface-300" size={32} />
-            </div>
-            <h2 className="text-lg font-bold text-surface-900 mb-2">Sin datos disponibles</h2>
-            <p className="text-sm text-surface-500 max-w-sm mb-6">
-              Aún no hay pruebas finalizadas en la base de datos. Comienza creando un nuevo plan de prueba.
-            </p>
-            <Button onClick={handleNewPlan} variant="outline" className="border-brand-200 text-brand-700">
-              Crear mi primer plan
-            </Button>
+        {loading && metrics.length === 0 ? (
+          <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" size={40} /></div>
+        ) : error && metrics.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <AlertOctagon className="text-red-600 mb-4" size={48} aria-hidden="true" />
+            <h2 className="text-xl font-semibold text-slate-900">Error de Conexión</h2>
+            <p className="text-slate-700 font-medium">{error}</p>
+            <Button onClick={fetchMetrics} variant="outline" className="mt-4 border-slate-300">Reintentar</Button>
+          </div>
+        ) : metrics.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed border-slate-300 rounded-2xl bg-white">
+            <FileBarChart className="text-slate-400 mb-4" size={48} aria-hidden="true" />
+            <h2 className="text-lg font-semibold text-slate-900">Sin datos disponibles</h2>
+            <Button onClick={handleNewPlan} variant="outline" className="mt-4 border-slate-300 font-semibold">Crear mi primer plan</Button>
           </div>
         ) : (
           metrics.map((m, idx) => (
             <section 
               key={idx} 
-              aria-labelledby={`report-title-${idx}`}
-              className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700"
-              style={{ animationDelay: `${idx * 150}ms` }}
+              className="space-y-6 border border-slate-200 p-6 rounded-3xl bg-white shadow-sm hover:shadow-md transition-shadow"
             >
-              <div className="flex items-center justify-between border-b border-surface-100 pb-4">
-                <h2 id={`report-title-${idx}`} className="text-lg font-bold text-surface-800 flex items-center gap-2">
-                  <span className="h-6 w-1 bg-brand-500 rounded-full"></span>
-                  Prueba ID: <span className="font-mono text-brand-600 uppercase text-base">{(m.test_plan_id || 'N/A').slice(0, 8)}</span>
-                </h2>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => handleEdit(m.test_plan_id)}
-                    disabled={loadingDetails === m.test_plan_id}
-                    className="text-surface-600 hover:bg-surface-100 flex items-center gap-2"
-                  >
-                    <Edit size={16} />
+              <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-4 gap-4">
+                <div className="text-left">
+                  <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <span className="h-6 w-1.5 bg-primary rounded-full" aria-hidden="true"></span>
+                    {m.product_name || "Plan sin nombre"}
+                  </h2>
+                  <p className="text-sm text-slate-600 font-semibold">{m.test_date ? new Date(m.test_date).toLocaleDateString() : "Fecha no definida"}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => generatePDF(m.test_plan_id)} className="text-blue-700 font-semibold hover:bg-blue-50 border border-blue-100">
+                    <Download size={16} aria-hidden="true" />
+                    Exportar PDF
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleEdit(m.test_plan_id)} disabled={loadingDetails === m.test_plan_id} className="text-slate-700 font-semibold hover:bg-slate-100 border border-slate-200">
+                    {loadingDetails === m.test_plan_id ? <Loader2 className="animate-spin" size={16} /> : <Edit size={16} aria-hidden="true" />} 
                     Editar
                   </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => toggleDetails(m.test_plan_id)}
-                    className="text-brand-600 hover:bg-brand-50 font-bold flex items-center gap-2"
-                  >
-                    {loadingDetails === m.test_plan_id ? (
-                      <Loader2 className="animate-spin" size={16} />
-                    ) : expandedPlan === m.test_plan_id ? (
-                      <ChevronUp size={16} />
-                    ) : (
-                      <Eye size={16} />
-                    )}
+                  <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(m.test_plan_id)} className="text-red-700 font-semibold hover:bg-red-50 border border-red-100"><Trash2 size={16} aria-hidden="true" /> Eliminar</Button>
+                  <Button variant="ghost" size="sm" onClick={() => toggleDetails(m.test_plan_id)} className="text-primary font-bold hover:bg-primary/5">
+                    {expandedPlan === m.test_plan_id ? <ChevronUp size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
                     {expandedPlan === m.test_plan_id ? "Ocultar" : "Detalles"}
                   </Button>
                 </div>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Tasa de Éxito */}
-                <div className="bg-white p-6 rounded-2xl border border-surface-200 shadow-soft hover:shadow-medium transition-all group overflow-hidden relative">
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <CheckCircle2 size={64} />
-                  </div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600">
-                      <TrendingUp size={20} />
+                {[
+                  { 
+                    label: "Tasa de Éxito", 
+                    val: `${m.success_rate}%`, 
+                    icon: TrendingUp, 
+                    color: "text-green-700",
+                    desc: "Efectividad (ISO 9241-11): Porcentaje de tareas completadas correctamente por los usuarios." 
+                  },
+                  { 
+                    label: "Eficiencia", 
+                    val: `${m.avg_time_seconds}s`, 
+                    icon: Clock, 
+                    color: "text-blue-700",
+                    desc: "Recursos (ISO 9241-11): Tiempo promedio que requiere un usuario para finalizar una tarea." 
+                  },
+                  { 
+                    label: "Fricción", 
+                    val: m.total_errors, 
+                    icon: AlertOctagon, 
+                    color: "text-red-700",
+                    desc: "Cantidad total de errores u obstáculos críticos encontrados durante las sesiones." 
+                  },
+                  { 
+                    label: "Muestra", 
+                    val: m.total_observations, 
+                    icon: Users, 
+                    color: "text-slate-900",
+                    desc: "Volumen total de observaciones registradas. Determina la validez estadística del test." 
+                  }
+                ].map((stat, si) => (
+                  <div key={si} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col group relative">
+                    <div className="flex items-center gap-3 mb-2">
+                      <stat.icon size={18} className="text-slate-600" aria-hidden="true" />
+                      <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">{stat.label}</span>
+                      <div className="ml-auto opacity-40 group-hover:opacity-100 transition-opacity cursor-help" title={stat.desc}>
+                        <Info size={14} aria-hidden="true" />
+                      </div>
                     </div>
-                    <span className="text-sm font-bold text-surface-500 uppercase tracking-wider">Tasa de Éxito</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className={`text-4xl font-black ${m.success_rate >= 70 ? 'text-green-600' : 'text-accent-600'}`}>
-                      {m.success_rate}%
-                    </span>
-                    <div className="mt-4 w-full bg-surface-100 h-2 rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full rounded-full transition-all duration-1000 ${m.success_rate >= 70 ? 'bg-green-500' : 'bg-accent-500'}`} 
-                        style={{ width: `${m.success_rate}%` }}
-                      ></div>
-                    </div>
-                    <p className="mt-3 text-[10px] text-surface-400 font-medium flex items-center gap-1">
-                      <Info size={10} />
-                      ISO 9241-11: Efectividad
+                    <span className={`text-3xl font-bold ${stat.color}`}>{stat.val}</span>
+                    <p className="mt-3 text-xs leading-tight text-slate-600 font-medium border-t border-slate-200 pt-3 italic">
+                      {stat.desc}
                     </p>
                   </div>
-                </div>
-
-                {/* Tiempo Promedio */}
-                <div className="bg-white p-6 rounded-2xl border border-surface-200 shadow-soft hover:shadow-medium transition-all group overflow-hidden relative">
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <Clock size={64} />
-                  </div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600">
-                      <Clock size={20} />
-                    </div>
-                    <span className="text-sm font-bold text-surface-500 uppercase tracking-wider">Eficiencia</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-black text-blue-600">{m.avg_time_seconds}</span>
-                      <span className="text-lg font-bold text-blue-400 italic">seg</span>
-                    </div>
-                    <p className="mt-4 text-[10px] text-surface-400 font-medium leading-tight">ISO 9241-11: Eficiencia (Tiempo promedio por tarea)</p>
-                    <div className="mt-4 flex gap-1">
-                       {[1,2,3,4,5,6].map(i => <div key={i} className={`h-1 flex-1 rounded-full ${i <= 4 ? 'bg-blue-400' : 'bg-surface-100'}`}></div>)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Total Errores */}
-                <div className="bg-white p-6 rounded-2xl border border-surface-200 shadow-soft hover:shadow-medium transition-all group overflow-hidden relative">
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <AlertOctagon size={64} />
-                  </div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-xl bg-accent-50 flex items-center justify-center text-accent-600">
-                      <AlertOctagon size={20} />
-                    </div>
-                    <span className="text-sm font-bold text-surface-500 uppercase tracking-wider">Fricción</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-4xl font-black text-accent-600">{m.total_errors}</span>
-                    <p className="mt-1 text-sm font-bold text-accent-900/40 uppercase">Errores Totales</p>
-                    <p className="mt-4 text-[10px] text-surface-400 font-medium leading-tight">
-                      Identificación de puntos críticos de usabilidad
-                    </p>
-                  </div>
-                </div>
-
-                {/* Muestra (Total Observaciones) */}
-                <div className="bg-white p-6 rounded-2xl border border-surface-200 shadow-soft hover:shadow-medium transition-all group overflow-hidden relative">
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <Users size={64} />
-                  </div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-xl bg-surface-100 flex items-center justify-center text-surface-600">
-                      <Users size={20} />
-                    </div>
-                    <span className="text-sm font-bold text-surface-500 uppercase tracking-wider">Muestra</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-4xl font-black text-surface-800">{m.total_observations}</span>
-                    <p className="mt-1 text-sm font-bold text-surface-900/40 uppercase">Tareas Evaluadas</p>
-                    <p className="mt-4 text-[10px] text-surface-400 font-medium">Representatividad estadística de los datos</p>
-                    <div className="mt-4 flex -space-x-2">
-                      {[1,2,3].map(i => <div key={i} className="h-6 w-6 rounded-full border-2 border-white bg-surface-200"></div>)}
-                      <div className="h-6 w-6 rounded-full border-2 border-white bg-brand-100 flex items-center justify-center text-[8px] font-bold text-brand-600">+{m.total_observations}</div>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
 
-              {/* Detalle del Formulario (Expandible) */}
               {expandedPlan === m.test_plan_id && planDetails[m.test_plan_id] && (
-                <div className="mt-6 border-t border-surface-100 pt-8 animate-in slide-in-from-top-2 duration-300">
+                <div ref={detailsRef} className="mt-6 border-t border-slate-100 pt-8 animate-in slide-in-from-top-2 duration-300">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
-                    {/* Columna 1: Contexto */}
-                    <div className="space-y-6">
-                      <div className="flex items-center gap-2 font-bold text-surface-900 border-b border-surface-100 pb-2">
-                        <FileText className="text-brand-500" size={18} />
-                        <h3>Contexto General</h3>
-                      </div>
-                      <dl className="grid grid-cols-1 gap-4 text-sm">
-                        {[
-                          { label: "Producto", value: planDetails[m.test_plan_id].product_name },
-                          { label: "Módulo", value: planDetails[m.test_plan_id].module_name },
-                          { label: "Objetivo", value: planDetails[m.test_plan_id].objective },
-                          { label: "Perfil", value: planDetails[m.test_plan_id].user_profile },
-                          { label: "Moderador", value: planDetails[m.test_plan_id].moderator_name },
-                          { label: "Observador", value: planDetails[m.test_plan_id].observer_name }
-                        ].map((item, i) => (
-                          <div key={i} className="flex flex-col gap-1">
-                            <dt className="text-xs font-bold text-surface-400 uppercase tracking-wider">{item.label}</dt>
-                            <dd className="text-surface-700 font-medium">{item.value || "No especificado"}</dd>
-                          </div>
-                        ))}
+                    <div className="space-y-4">
+                      <h3 className="font-semibold border-b border-slate-100 pb-2 flex items-center gap-2 text-slate-900"><FileText size={16} aria-hidden="true"/> Contexto</h3>
+                      <dl className="space-y-2 text-sm">
+                        <div>
+                          <dt className="text-xs font-bold text-slate-600 uppercase tracking-wider">Objetivo</dt>
+                          <dd className="text-slate-800 font-medium">{planDetails[m.test_plan_id].objective || "No definido"}</dd>
+                        </div>
+                        <div>
+                          <dt className="text-xs font-bold text-slate-600 uppercase tracking-wider">Moderador</dt>
+                          <dd className="text-slate-800 font-medium">{planDetails[m.test_plan_id].moderator_name || "No definido"}</dd>
+                        </div>
                       </dl>
                     </div>
-
-                    {/* Columna 2: Tareas */}
-                    <div className="lg:col-span-2 space-y-6">
-                      <div className="flex items-center gap-2 font-bold text-surface-900 border-b border-surface-100 pb-2">
-                        <ClipboardList className="text-brand-500" size={18} />
-                        <h3>Tareas Definidas</h3>
-                      </div>
+                    <div className="lg:col-span-2 space-y-4">
+                      <h3 className="font-semibold border-b border-slate-100 pb-2 flex items-center gap-2 text-slate-900"><ClipboardList size={16} aria-hidden="true"/> Hallazgos Clave</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {planDetails[m.test_plan_id].tasks.map((task: any, i: number) => (
-                          <div key={i} className="p-4 rounded-xl border border-surface-100 bg-surface-50/50">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="h-6 w-6 rounded bg-brand-600 text-white text-[10px] font-bold flex items-center justify-center">
-                                {task.task_label}
-                              </span>
-                              <h4 className="text-xs font-bold text-surface-900 uppercase">Escenario</h4>
+                        {(planDetails[m.test_plan_id].findings || []).slice(0, 4).map((f: any, fi: number) => (
+                          <div key={fi} className="p-4 bg-slate-50 rounded-xl text-sm border border-slate-200 shadow-sm">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-bold text-slate-900">{f.problem}</span>
+                              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                                f.priority === 'Alta' ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'
+                              }`}>{f.priority}</span>
                             </div>
-                            <p className="text-sm text-surface-600 italic mb-3">"{task.scenario}"</p>
-                            <div className="grid grid-cols-2 gap-4 text-[10px]">
-                              <div>
-                                <span className="block font-bold text-surface-400 uppercase mb-1">Métrica</span>
-                                <span className="text-surface-700">{task.main_metric || "-"}</span>
-                              </div>
-                              <div>
-                                <span className="block font-bold text-surface-400 uppercase mb-1">Éxito</span>
-                                <span className="text-surface-700">{task.success_criteria || "-"}</span>
-                              </div>
-                            </div>
+                            <p className="text-slate-700 font-medium leading-relaxed">{f.recommendation}</p>
                           </div>
                         ))}
-                      </div>
-
-                      {/* Hallazgos */}
-                      <div className="mt-8 space-y-6">
-                        <div className="flex items-center gap-2 font-bold text-surface-900 border-b border-surface-100 pb-2">
-                          <Lightbulb className="text-brand-500" size={18} />
-                          <h3>Hallazgos y Recomendaciones</h3>
-                        </div>
-                        <div className="overflow-hidden rounded-xl border border-surface-200">
-                          <table className="w-full text-xs text-left">
-                            <thead className="bg-surface-50 border-b border-surface-200">
-                              <tr>
-                                <th className="px-4 py-2 font-bold text-surface-700">Problema</th>
-                                <th className="px-4 py-2 font-bold text-surface-700 text-center">Prioridad</th>
-                                <th className="px-4 py-2 font-bold text-surface-700">Recomendación</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-surface-100 bg-white">
-                              {planDetails[m.test_plan_id].findings.map((f: any, i: number) => (
-                                <tr key={i}>
-                                  <td className="px-4 py-3 text-surface-800 font-medium">{f.problem}</td>
-                                  <td className="px-4 py-3 text-center">
-                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                      f.priority === 'Alta' ? 'bg-accent-100 text-accent-700' : 
-                                      f.priority === 'Media' ? 'bg-brand-100 text-brand-700' : 
-                                      'bg-surface-100 text-surface-600'
-                                    }`}>
-                                      {f.priority}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 text-surface-600">{f.recommendation}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -408,9 +413,9 @@ export function DashboardPage() {
         )}
       </div>
       
-      <footer className="mt-auto px-6 py-10 bg-surface-50 border-t border-surface-200 text-center">
-        <p className="text-xs text-surface-400 font-medium max-w-md mx-auto leading-relaxed">
-          Este reporte se genera automáticamente a partir de las observaciones registradas. Los KPIs de usabilidad siguen el estándar ISO 9241-11 para medir Efectividad y Eficiencia.
+      <footer className="mt-auto px-6 py-10 bg-slate-100 border-t border-slate-200 text-center">
+        <p className="text-xs text-slate-700 font-semibold max-w-md mx-auto leading-relaxed uppercase tracking-wider">
+          KPIs de usabilidad estándar ISO 9241-11
         </p>
       </footer>
     </div>

@@ -1,17 +1,41 @@
 import { supabase } from '../config/supabase';
-import type { ITestPlanRepository, ITaskRepository, IObservationRepository, IFindingRepository } from '../../domain/repositories/interfaces';
-import type { Task, Observation, Finding, DashboardMetrics } from '../../domain/entities/types';
+import type { 
+  ITestPlanRepository, 
+  ITaskRepository, 
+  IObservationRepository, 
+  IFindingRepository,
+  IParticipantRepository 
+} from '../../domain/repositories/interfaces';
+import type { Task, Observation, Finding, Participant } from '../../domain/entities/types';
 
 export class SupabaseTestPlanRepository implements ITestPlanRepository {
   async create(plan: any): Promise<string> {
     const { data, error } = await supabase
       .from('test_plans')
-      .insert([plan])
+      .insert(plan)
       .select('id')
       .single();
 
     if (error) throw new Error(error.message);
     return data.id;
+  }
+
+  async update(id: string, plan: any): Promise<void> {
+    const { error } = await supabase
+      .from('test_plans')
+      .update(plan)
+      .eq('id', id);
+
+    if (error) throw new Error(error.message);
+  }
+
+  async delete(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('test_plans')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw new Error(error.message);
   }
 
   async getById(id: string): Promise<any> {
@@ -25,24 +49,56 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
     return data;
   }
 
-  async getAllMetrics(): Promise<DashboardMetrics[]> {
+  async getFullPlan(id: string): Promise<any> {
+    const { data, error } = await supabase
+      .from('test_plans')
+      .select(`
+        *,
+        tasks (*),
+        findings (*),
+        observations (
+          *,
+          participants (*),
+          tasks (*)
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  async getAllMetrics(): Promise<any[]> {
     const { data, error } = await supabase
       .from('dashboard_metrics')
-      .select('*');
+      .select('*')
+      .order('test_date', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+}
+
+export class SupabaseParticipantRepository implements IParticipantRepository {
+  async saveAll(participants: Partial<Participant>[]): Promise<Participant[]> {
+    const { data, error } = await supabase
+      .from('participants')
+      .upsert(participants, { onConflict: 'test_plan_id, name' })
+      .select();
 
     if (error) throw new Error(error.message);
     return data || [];
   }
 
-  async getFullPlan(id: string): Promise<any> {
-    const { data: plan, error: planError } = await supabase
-      .from('test_plans')
-      .select('*, tasks(*), findings(*), observations(*)')
-      .eq('id', id)
-      .single();
+  async getByPlanId(planId: string): Promise<Participant[]> {
+    const { data, error } = await supabase
+      .from('participants')
+      .select('*')
+      .eq('test_plan_id', planId);
 
-    if (planError) throw new Error(planError.message);
-    return plan;
+    if (error) throw new Error(error.message);
+    return data || [];
   }
 }
 
@@ -50,7 +106,7 @@ export class SupabaseTaskRepository implements ITaskRepository {
   async saveAll(tasks: Partial<Task>[]): Promise<void> {
     const { error } = await supabase
       .from('tasks')
-      .insert(tasks);
+      .upsert(tasks, { onConflict: 'test_plan_id, task_label' });
 
     if (error) throw new Error(error.message);
   }
@@ -71,7 +127,19 @@ export class SupabaseObservationRepository implements IObservationRepository {
   async save(observation: Partial<Observation>): Promise<void> {
     const { error } = await supabase
       .from('observations')
-      .insert([observation]);
+      .insert(observation);
+
+    if (error) throw new Error(error.message);
+  }
+
+  async saveAll(observations: Partial<Observation>[]): Promise<void> {
+    if (observations.length > 0 && observations[0].test_plan_id) {
+      await supabase.from('observations').delete().eq('test_plan_id', observations[0].test_plan_id);
+    }
+    
+    const { error } = await supabase
+      .from('observations')
+      .insert(observations);
 
     if (error) throw new Error(error.message);
   }
@@ -79,7 +147,7 @@ export class SupabaseObservationRepository implements IObservationRepository {
   async getByPlanId(planId: string): Promise<Observation[]> {
     const { data, error } = await supabase
       .from('observations')
-      .select('*, participants(*), tasks(*)')
+      .select('*')
       .eq('test_plan_id', planId);
 
     if (error) throw new Error(error.message);
@@ -91,7 +159,19 @@ export class SupabaseFindingRepository implements IFindingRepository {
   async save(finding: Partial<Finding>): Promise<void> {
     const { error } = await supabase
       .from('findings')
-      .insert([finding]);
+      .insert(finding);
+
+    if (error) throw new Error(error.message);
+  }
+
+  async saveAll(findings: Partial<Finding>[]): Promise<void> {
+    if (findings.length > 0 && findings[0].test_plan_id) {
+      await supabase.from('findings').delete().eq('test_plan_id', findings[0].test_plan_id);
+    }
+
+    const { error } = await supabase
+      .from('findings')
+      .insert(findings);
 
     if (error) throw new Error(error.message);
   }

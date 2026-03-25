@@ -4,10 +4,31 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>usability-dashboard</title>
+    <title>Usability Dashboard - IHC / Accesibilidad WCAG 2.2</title>
+    <meta name="description" content="Dashboard profesional para gestión de pruebas de usabilidad y accesibilidad (WCAG 2.2)." />
+    
+    <!-- Fonts: Plus Jakarta Sans for a modern, professional look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+
+    <!-- Preconnect to Supabase to speed up initial API call -->
+    <link rel="preconnect" href="https://lzunpylzomzndvxtzofj.supabase.co" crossorigin />
+    <link rel="dns-prefetch" href="https://lzunpylzomzndvxtzofj.supabase.co" />
+
+    <style>
+      /* Inline styles for background to prevent white flash (FCP optimization) */
+      body { background-color: #f8fafc; margin: 0; color: #0f172a; }
+      #root { min-height: 100vh; }
+      
+      /* Accesibilidad: Reducción de movimiento si el sistema lo requiere */
+      @media (prefers-reduced-motion: reduce) {
+        * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" role="main" aria-label="Contenedor principal de la aplicación"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

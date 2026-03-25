@@ -14,6 +14,15 @@ export default defineConfig({
     },
   },
   build: {
+    minify: 'terser', // Terser can sometimes produce smaller bundles than esbuild
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+    },
+    manifest: true,
+    cssCodeSplit: true,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -22,6 +31,7 @@ export default defineConfig({
           }
         }
       }
-    }
+    },
+    chunkSizeWarningLimit: 600,
   }
 })

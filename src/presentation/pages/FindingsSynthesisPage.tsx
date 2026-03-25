@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -9,24 +10,38 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTestPlan } from "../context/TestPlanContext";
-import { 
-  SupabaseTestPlanRepository, 
-  SupabaseTaskRepository, 
+import {
+  SupabaseTestPlanRepository,
+  SupabaseTaskRepository,
+  SupabaseParticipantRepository,
   SupabaseFindingRepository,
-  SupabaseObservationRepository
+  SupabaseObservationRepository,
 } from "../../infrastructure/repositories/SupabaseRepositories";
-import { Lightbulb, Plus, Trash2, Save, ArrowRight, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { type Observation } from "@/domain/entities/types";
+import {
+  Lightbulb,
+  Plus,
+  Trash2,
+  Save,
+  ArrowRight,
+  Loader2,
+  AlertTriangle,
+  CheckCircle2,
+} from "lucide-react";
+import { NavigationButtons } from "../components/layout/NavigationButtons";
 
 export function FindingsSynthesisPage() {
-  const { data, updateFindings, addFinding, resetData } = useTestPlan();
+  const { data, updateFindings, addFinding, updateTestPlanId } = useTestPlan();
   const [loading, setLoading] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<{ type: 'success' | 'error' | null, message: string | null }>({ type: null, message: null });
+  const [saveStatus, setSaveStatus] = useState<{
+    type: "success" | "error" | null;
+    message: string | null;
+  }>({ type: null, message: null });
 
-  // Validación de IHC: Prevenir errores desactivando acciones incompletas
   const isDataComplete = () => {
-    const hasPlan = data.plan.product_name.trim() !== "" && data.plan.objective.trim() !== "";
-    const hasTasks = data.tasks.some((t: any) => t.scenario.trim() !== "");
-    const hasObservations = data.observations.some((o: any) => o.participant_name.trim() !== "");
+    const hasPlan = (data.plan.product_name || "").trim() !== "" && (data.plan.objective || "").trim() !== "";
+    const hasTasks = data.tasks.some((t: any) => (t.scenario || "").trim() !== "");
+    const hasObservations = data.observations.some((o: any) => (o.participant_name || "").trim() !== "");
     return hasPlan && hasTasks && hasObservations;
   };
 
@@ -44,69 +59,100 @@ export function FindingsSynthesisPage() {
   };
 
   const handleSaveAll = async () => {
-    const validPriorities = ['Baja', 'Media', 'Alta'];
-    const validStatuses = ['Pendiente', 'En Progreso', 'Resuelto'];
-
+    const validPriorities = ["Baja", "Media", "Alta"];
+    const validStatuses = ["Pendiente", "En Progreso", "Resuelto"];
     setLoading(true);
+    setSaveStatus({ type: null, message: null });
+
     try {
       const planRepo = new SupabaseTestPlanRepository();
       const taskRepo = new SupabaseTaskRepository();
-      const findingRepo = new SupabaseFindingRepository();
+      const participantRepo = new SupabaseParticipantRepository();
       const obsRepo = new SupabaseObservationRepository();
+      const findingRepo = new SupabaseFindingRepository();
 
-      const planId = await planRepo.create(data.plan);
+      let planId = data.test_plan_id;
+      if (planId) {
+        await planRepo.update(planId, data.plan);
+      } else {
+        planId = await planRepo.create(data.plan);
+      }
 
       const tasksToSave = data.tasks
-        .filter(t => t.scenario || t.expected_result)
+        .filter((t) => (t.scenario || "").trim() !== "" || (t.expected_result || "").trim() !== "")
         .map((t, index) => ({
-          ...t,
           test_plan_id: planId,
-          order_index: index
-        }));
-      if (tasksToSave.length > 0) await taskRepo.saveAll(tasksToSave);
-
-      const obsToSave = data.observations
-        .filter(o => o.participant_name || o.task_label)
-        .map(o => ({
-          test_plan_id: planId,
-          success: o.success === 'Si',
-          time_seconds: parseInt(o.time_seconds) || 0,
-          errors_count: parseInt(o.errors_count) || 0,
-          key_comments: o.key_comments,
-          detected_problem: o.detected_problem,
-          severity: o.severity,
-          proposed_improvement: o.proposed_improvement
+          task_label: t.task_label,
+          scenario: t.scenario,
+          expected_result: t.expected_result,
+          main_metric: t.main_metric,
+          success_criteria: t.success_criteria,
+          follow_up_question: t.follow_up_question,
+          order_index: index,
         }));
       
-      if (obsToSave.length > 0) {
-        for (const obs of obsToSave) {
-          await obsRepo.save(obs);
-        }
-      }
+      await taskRepo.saveAll(tasksToSave);
+      const savedTasks = await taskRepo.getByPlanId(planId!);
+
+      const uniqueParticipants = Array.from(
+        new Map(
+          data.observations
+            .filter(o => (o.participant_name || "").trim() !== "")
+            .map(o => [o.participant_name.trim(), {
+              test_plan_id: planId,
+              name: o.participant_name.trim(),
+              profile: o.participant_profile || ""
+            }])
+        ).values()
+      );
+
+      const savedParticipants = await participantRepo.saveAll(uniqueParticipants);
+      
+      const obsToSave: Partial<Observation>[] = data.observations
+        .filter((o) => (o.participant_name || "").trim() !== "" || o.task_label)
+        .map((o) => {
+          const participantMatch = savedParticipants.find(p => p.name === o.participant_name.trim());
+          const taskMatch = savedTasks.find(st => st.task_label === o.task_label);
+          return {
+            test_plan_id: planId,
+            participant_id: participantMatch?.id || undefined,
+            task_id: taskMatch?.id || undefined,
+            success: o.success === "Si",
+            time_seconds: parseInt(o.time_seconds) || 0,
+            errors_count: parseInt(o.errors_count) || 0,
+            key_comments: o.key_comments || "",
+            detected_problem: o.detected_problem || "",
+            severity: (o.severity as any) || "Baja",
+            proposed_improvement: o.proposed_improvement || "",
+          };
+        });
+
+      if (obsToSave.length > 0) await obsRepo.saveAll(obsToSave);
 
       const findingsToSave = data.findings
-        .filter(f => f.problem.trim() !== "")
-        .map(f => ({
-          ...f,
+        .filter((f) => (f.problem || "").trim() !== "")
+        .map((f) => ({
           test_plan_id: planId,
-          priority: validPriorities.includes(f.priority) ? f.priority : 'Media',
-          status: validStatuses.includes(f.status) ? f.status : 'Pendiente'
+          problem: f.problem,
+          evidence: f.evidence,
+          severity: f.severity,
+          recommendation: f.recommendation,
+          priority: (validPriorities.includes(f.priority) ? f.priority : "Media") as any,
+          status: (validStatuses.includes(f.status) ? f.status : "Pendiente") as any,
         }));
 
-      if (findingsToSave.length > 0) {
-        for (const finding of findingsToSave) {
-          await findingRepo.save(finding);
-        }
-      }
+      await findingRepo.saveAll(findingsToSave);
+      if (planId) updateTestPlanId(planId);
 
-      setSaveStatus({ type: 'success', message: "¡Prueba de usabilidad guardada con éxito en la base de datos!" });
-      setTimeout(() => {
-        resetData();
-        setSaveStatus({ type: null, message: null });
-      }, 3000);
+      setSaveStatus({
+        type: "success",
+        message: data.test_plan_id ? "¡Prueba actualizada!" : "¡Prueba guardada con éxito!",
+      });
     } catch (error: any) {
-      console.error(error);
-      setSaveStatus({ type: 'error', message: "Error al guardar: " + error.message });
+      setSaveStatus({
+        type: "error",
+        message: "Error al guardar: " + (error.message || "Error desconocido"),
+      });
     } finally {
       setLoading(false);
     }
@@ -116,31 +162,33 @@ export function FindingsSynthesisPage() {
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Banner de Notificación Profesional (Reemplaza a los alerts feos) */}
       {saveStatus.message && (
-        <div className={`fixed top-24 right-6 z-50 animate-in slide-in-from-right duration-300 p-4 rounded-2xl shadow-medium border flex items-center gap-3 max-w-md ${
-          saveStatus.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-accent-50 border-accent-200 text-accent-800'
-        }`}>
-          {saveStatus.type === 'success' ? <CheckCircle2 className="text-green-600" /> : <AlertTriangle className="text-accent-600" />}
-          <p className="text-sm font-bold">{saveStatus.message}</p>
+        <div role="status" aria-live="polite" className={`fixed top-24 right-6 z-50 p-6 rounded-3xl shadow-2xl border-2 flex items-center gap-4 max-w-md animate-in slide-in-from-right duration-300 ${saveStatus.type === "success" ? "bg-green-600 border-green-700 text-white" : "bg-red-600 border-red-700 text-white"}`}>
+          <div className="h-12 w-12 rounded-full flex items-center justify-center shrink-0 bg-white/20">
+            {saveStatus.type === "success" ? <CheckCircle2 size={28} className="text-white" /> : <AlertTriangle size={28} className="text-white" />}
+          </div>
+          <div>
+            <p className="text-sm font-bold">{saveStatus.message}</p>
+            {saveStatus.type === "success" && <Link to="/" className="inline-block mt-2 text-xs font-bold underline hover:no-underline">Ir al Dashboard</Link>}
+          </div>
+          <button onClick={() => setSaveStatus({ type: null, message: null })} className="ml-auto text-white/80 hover:text-white p-2" aria-label="Cerrar">
+            <Trash2 size={20} aria-hidden="true" />
+          </button>
         </div>
       )}
 
-      {/* Hero Section */}
-      <header className="px-6 py-8 border-b border-surface-100 bg-brand-50/30">
+      <header className="px-6 py-8 border-b border-slate-200 bg-slate-50">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-brand-900 flex items-center gap-2">
-              <Lightbulb className="text-brand-600" aria-hidden="true" />
+            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <Lightbulb className="text-primary" aria-hidden="true" size={28} />
               Síntesis y Plan de Mejora
             </h1>
-            <p className="mt-1 text-surface-600 max-w-2xl">
-              Transforma las observaciones en hallazgos accionables. Prioriza los problemas detectados y define recomendaciones de diseño estratégicas.
-            </p>
+            <p className="mt-1 text-slate-700 max-w-2xl text-sm font-medium">Transforma las observaciones en hallazgos accionables.</p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-brand-700 font-medium bg-brand-100/50 px-3 py-1.5 rounded-full border border-brand-200">
-            <AlertTriangle size={16} />
-            HCI Best Practice: Prioriza por severidad y frecuencia
+          <div className="flex items-center gap-2 text-sm text-red-900 font-semibold bg-red-100 px-4 py-2 rounded-full border-2 border-red-200">
+            <AlertTriangle size={18} aria-hidden="true" />
+            IHC: Prioriza por severidad y frecuencia
           </div>
         </div>
       </header>
@@ -148,168 +196,123 @@ export function FindingsSynthesisPage() {
       <div className="p-6 space-y-8">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-brand-100 flex items-center justify-center text-brand-600">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary" aria-hidden="true">
               <Lightbulb size={18} />
             </div>
-            <h2 className="text-xl font-bold text-surface-900">Hallazgos Identificados</h2>
+            <h2 className="text-xl font-bold text-slate-900">Hallazgos Identificados</h2>
           </div>
-          <Button 
-            onClick={addFinding} 
-            variant="outline"
-            className="border-brand-200 text-brand-700 hover:bg-brand-50 shadow-soft flex items-center gap-2"
-            aria-label="Agregar un nuevo hallazgo"
-          >
-            <Plus size={18} />
-            Agregar Hallazgo
+          <Button onClick={addFinding} variant="outline" className="border-primary text-primary font-semibold shadow-sm flex items-center gap-2 hover:bg-primary/5">
+            <Plus size={18} aria-hidden="true" strokeWidth={2.5} />
+            <span className="hidden sm:inline">Agregar Hallazgo</span>
+            <span className="sm:hidden text-xs">Nuevo</span>
           </Button>
         </div>
 
-        <div className="rounded-xl border border-surface-200 overflow-hidden shadow-soft bg-white">
-          <div className="overflow-x-auto">
+        <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm bg-white">
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full text-sm text-left border-collapse">
               <thead>
-                <tr className="bg-surface-50 border-b border-surface-200">
-                  <th className="px-4 py-3 font-semibold text-surface-700 w-[20%]">Problema</th>
-                  <th className="px-4 py-3 font-semibold text-surface-700 w-[25%]">Evidencia / Cita</th>
-                  <th className="px-4 py-3 font-semibold text-surface-700 w-28 text-center">Severidad</th>
-                  <th className="px-4 py-3 font-semibold text-surface-700 w-[25%]">Recomendación</th>
-                  <th className="px-4 py-3 font-semibold text-surface-700 w-28 text-center">Prioridad</th>
-                  <th className="px-4 py-3 font-semibold text-surface-700 w-28 text-center">Estado</th>
-                  <th className="px-4 py-3 font-semibold text-surface-700 w-12 text-center">X</th>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-[20%]">Problema</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-[25%]">Evidencia</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-28 text-center">Severidad</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-[25%]">Recomendación</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-28 text-center">Prioridad</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-12 text-center">X</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-surface-100">
+              <tbody className="divide-y divide-slate-100">
                 {data.findings.map((finding, index) => (
-                  <tr key={index} className="hover:bg-surface-50/50 transition-colors">
+                  <tr key={index} className="hover:bg-slate-50 transition-colors">
                     <td className="px-2 py-3">
-                      <Input 
-                        value={finding.problem} 
-                        aria-label={`Problema hallazgo ${index + 1}`}
-                        onChange={(e) => handleFindingChange(index, 'problem', e.target.value)} 
-                        className="h-9 text-xs border-surface-200 focus:ring-brand-500" 
-                        placeholder="Ej. El botón de pago es invisible"
-                      />
+                      <Input id={`find-prob-${index}`} value={finding.problem} aria-label={`Problema hallazgo ${index + 1}`} onChange={(e) => handleFindingChange(index, "problem", e.target.value)} className="h-9 text-xs border-slate-200 font-medium text-slate-900" placeholder="Problema..." />
                     </td>
                     <td className="px-2 py-3">
-                      <Input 
-                        value={finding.evidence} 
-                        aria-label={`Evidencia hallazgo ${index + 1}`}
-                        onChange={(e) => handleFindingChange(index, 'evidence', e.target.value)} 
-                        className="h-9 text-xs border-surface-200 focus:ring-brand-500" 
-                        placeholder="Ej. 4/5 usuarios no lo vieron..."
-                      />
+                      <Input id={`find-evid-${index}`} value={finding.evidence} aria-label={`Evidencia hallazgo ${index + 1}`} onChange={(e) => handleFindingChange(index, "evidence", e.target.value)} className="h-9 text-xs border-slate-200 font-medium text-slate-900" placeholder="Evidencia..." />
                     </td>
                     <td className="px-2 py-3">
-                      <Input 
-                        value={finding.severity} 
-                        aria-label={`Severidad hallazgo ${index + 1}`}
-                        onChange={(e) => handleFindingChange(index, 'severity', e.target.value)} 
-                        className="h-9 text-xs border-surface-200 text-center" 
-                        placeholder="Alta"
-                      />
-                    </td>
-                    <td className="px-2 py-3">
-                      <Input 
-                        value={finding.recommendation} 
-                        aria-label={`Recomendación hallazgo ${index + 1}`}
-                        onChange={(e) => handleFindingChange(index, 'recommendation', e.target.value)} 
-                        className="h-9 text-xs border-brand-100 bg-brand-50/20" 
-                        placeholder="Ej. Usar color de contraste..."
-                      />
-                    </td>
-                    <td className="px-2 py-3">
-                      <Select value={finding.priority} onValueChange={(val) => handleFindingChange(index, 'priority', val)}>
-                        <SelectTrigger className="h-9 w-24 mx-auto text-xs border-surface-200">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Baja">Baja</SelectItem>
-                          <SelectItem value="Media">Media</SelectItem>
-                          <SelectItem value="Alta">Alta</SelectItem>
-                        </SelectContent>
+                      <Select value={finding.severity} onValueChange={(val) => handleFindingChange(index, "severity", val)}>
+                        <SelectTrigger aria-label={`Severidad hallazgo ${index + 1}`} className="h-9 w-24 mx-auto text-xs border-slate-300 font-semibold text-slate-800"><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="Baja">Baja</SelectItem><SelectItem value="Media">Media</SelectItem><SelectItem value="Alta">Alta</SelectItem></SelectContent>
                       </Select>
                     </td>
                     <td className="px-2 py-3">
-                      <Select value={finding.status} onValueChange={(val) => handleFindingChange(index, 'status', val)}>
-                        <SelectTrigger className={`h-9 w-24 mx-auto text-[10px] font-bold border-surface-200 ${finding.status === 'Resuelto' ? 'bg-green-50 text-green-700' : finding.status === 'En Progreso' ? 'bg-blue-50 text-blue-700' : 'bg-surface-100 text-surface-600'}`}>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Pendiente">Pendiente</SelectItem>
-                          <SelectItem value="En Progreso">En Progreso</SelectItem>
-                          <SelectItem value="Resuelto">Resuelto</SelectItem>
-                        </SelectContent>
+                      <Input id={`find-recom-${index}`} value={finding.recommendation} aria-label={`Recomendación hallazgo ${index + 1}`} onChange={(e) => handleFindingChange(index, "recommendation", e.target.value)} className="h-9 text-xs border-primary/30 text-primary font-semibold bg-primary/5 focus:border-primary placeholder:text-primary/40" placeholder="Recomendación..." />
+                    </td>
+                    <td className="px-2 py-3">
+                      <Select value={finding.priority} onValueChange={(val) => handleFindingChange(index, "priority", val)}>
+                        <SelectTrigger aria-label={`Prioridad hallazgo ${index + 1}`} className="h-9 w-24 mx-auto text-xs border-slate-300 font-semibold text-slate-800"><SelectValue /></SelectTrigger>
+                        <SelectContent><SelectItem value="Baja">Baja</SelectItem><SelectItem value="Media">Media</SelectItem><SelectItem value="Alta">Alta</SelectItem></SelectContent>
                       </Select>
                     </td>
                     <td className="px-2 py-3 text-center">
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => removeRow(index)} 
-                        className="text-surface-400 hover:text-accent-600 hover:bg-accent-50 transition-colors"
-                        aria-label={`Eliminar hallazgo ${index + 1}`}
-                      >
-                        <Trash2 size={16} />
-                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => removeRow(index)} className="text-slate-400 hover:text-red-700 transition-colors" aria-label={`Eliminar hallazgo ${index + 1}`}><Trash2 size={16} /></Button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          <div className="lg:hidden divide-y divide-slate-100">
+            {data.findings.map((finding, index) => (
+              <div key={index} className="p-6 bg-white space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <span className="text-sm font-bold text-primary uppercase tracking-wider">Hallazgo #{index + 1}</span>
+                  <Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="text-red-700 font-semibold bg-red-50 hover:bg-red-100 transition-colors px-3" aria-label={`Eliminar hallazgo ${index + 1}`}><Trash2 size={18} className="mr-1" aria-hidden="true" /> Eliminar</Button>
+                </div>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label htmlFor={`mobile-find-prob-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Problema Detectado</label>
+                    <Input id={`mobile-find-prob-${index}`} value={finding.problem} onChange={(e) => handleFindingChange(index, "problem", e.target.value)} className="h-11 text-sm border-slate-300 font-medium text-slate-900" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor={`mobile-find-recom-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Recomendación</label>
+                    <Input id={`mobile-find-recom-${index}`} value={finding.recommendation} onChange={(e) => handleFindingChange(index, "recommendation", e.target.value)} className="h-11 text-sm border-primary/30 bg-primary/5 font-semibold text-primary" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center py-10 space-y-6 w-full">
-          <div className="max-w-md w-full text-center flex flex-col items-center">
-            <p className="text-sm text-surface-500 mb-8">
-              Al guardar, se consolidará el plan de prueba, las observaciones y estos hallazgos en la base de datos de Supabase para su posterior análisis en el Dashboard.
+        <div className="flex flex-col items-center justify-center py-10 space-y-10 w-full">
+          <div className="max-w-md w-full text-center flex flex-col items-center px-4">
+            <p className="text-sm text-slate-700 mb-8 font-medium leading-relaxed">
+              Al finalizar, toda la información se sincronizará con tu dashboard central.
             </p>
-            
-            <Button 
-              onClick={handleSaveAll} 
+
+            <Button
+              onClick={handleSaveAll}
               disabled={loading || !canSave}
-              className={`px-10 py-8 rounded-2xl text-lg font-bold shadow-medium transition-all flex items-center justify-center gap-3 min-w-[280px] ${
-                canSave 
-                  ? "bg-brand-600 hover:bg-brand-700 text-white hover:scale-[1.02] active:scale-95 shadow-medium" 
-                  : "bg-surface-100 text-surface-400 border-surface-200 cursor-not-allowed opacity-60"
+              className={`w-full py-10 rounded-3xl text-xl font-bold shadow-md transition-all flex items-center justify-center gap-4 ${
+                canSave
+                  ? "bg-primary hover:bg-primary/90 text-white shadow-primary/20 active:scale-95"
+                  : "bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed opacity-80"
               }`}
-              aria-live="polite"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="animate-spin text-current" size={24} />
-                  <span>Sincronizando...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="text-current" size={24} />
-                  <span>Finalizar y Guardar Todo</span>
-                </>
-              )}
+              {loading ? <><Loader2 className="animate-spin" size={32} /><span>Sincronizando...</span></> : <><Save size={32} /><span>GUARDAR RESULTADOS</span></>}
             </Button>
-            {!canSave && (
-              <div className="mt-6 p-4 bg-accent-50 border border-accent-100 rounded-xl max-w-sm mx-auto animate-in fade-in zoom-in-95">
-                <p className="text-xs text-accent-700 font-bold flex items-center justify-center gap-1 mb-2">
-                  <AlertTriangle size={14} />
-                  Faltan datos obligatorios:
-                </p>
-                <ul className="text-[10px] text-accent-600 space-y-1 list-disc pl-5 text-left">
-                  {!data.plan.product_name && <li>Nombre del Producto (Vista Plan)</li>}
-                  {!data.plan.objective && <li>Objetivo del Test (Vista Plan)</li>}
-                  {!data.tasks.some((t:any) => t.scenario.trim() !== "") && <li>Definir al menos una Tarea (Vista Plan)</li>}
-                  {!data.observations.some((o:any) => o.participant_name.trim() !== "") && <li>Registrar al menos un Participante (Vista Registro)</li>}
-                </ul>
-              </div>
-            )}
           </div>
-          
-          <div className="flex items-center gap-4 text-xs font-medium text-surface-400 uppercase tracking-widest">
-            <span className="h-px w-8 bg-surface-200"></span>
-            Próximo Paso: Ver Dashboard
-            <ArrowRight size={12} />
-            <span className="h-px w-8 bg-surface-200"></span>
+
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
+              <span className="h-px w-12 bg-slate-300" aria-hidden="true"></span>
+              Siguiente Paso Sugerido
+              <span className="h-px w-12 bg-slate-300" aria-hidden="true"></span>
+            </div>
+
+            <Link
+              to="/"
+              className="group border-2 border-slate-300 text-slate-700 hover:border-primary hover:text-primary px-8 py-4 rounded-2xl transition-all flex items-center gap-3 font-bold"
+            >
+              <ArrowRight className="group-hover:translate-x-1 transition-transform" aria-hidden="true" />
+              Ver Dashboard de Resultados
+            </Link>
           </div>
         </div>
+
+        <NavigationButtons currentStep="sintesis" />
       </div>
     </div>
   );
