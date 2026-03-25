@@ -1,0 +1,70 @@
+MAPA DE NAVEGACIÓN - USABILITY DASHBOARD (IHC)
+==============================================
+
+Este documento describe la jerarquía y el flujo de la aplicación basándose en los principios de Interacción Humano-Computadora (IHC) y la arquitectura actual del proyecto (v1.0.0).
+
+1. ESTRUCTURA JERÁRQUICA (Site Map)
+----------------------------------
+
+[INICIO] (Dashboard Principal - /)
+│
+├── [KPIs DASHBOARD] (Métricas ISO 9241-11)
+│   ├── Tasa de Éxito (Efectividad)
+│   ├── Eficiencia (Recursos/Tiempo)
+│   ├── Fricción (Errores/Obstáculos)
+│   └── Muestra (Validez estadística)
+│   └── ACCIÓN: Exportar PDF (Registro físico de resultados)
+│
+├── [PLAN] (Formulario de Creación/Edición - /plan)
+│   ├── Sección 1: Contexto General (Producto, Módulo, Objetivo SMART, Perfil)
+│   ├── Sección 2: Tareas del Test (Escenarios, Métricas, Criterios de Éxito)
+│   ├── Sección 3: Roles y Logística (Moderador, Observador, Prototipo)
+│   └── Sección 4: Notas Adicionales
+│
+├── [GUÍA] (Guion del Moderador - /guia)
+│   ├── Protocolo de Inicio (Agradecimiento, Think Aloud, Neutralidad)
+│   ├── Estructura del Guion (Tareas y Preguntas de Seguimiento)
+│   └── Cierre y Entrevista Final
+│
+├── [REGISTRO] (Módulo de Observaciones - /registro)
+│   ├── Datos del Participante
+│   ├── Tabla/Tarjetas de Registro en Tiempo Real (Éxito, Tiempo, Errores)
+│   └── Problemas Detectados y Sugerencias de Mejora
+│
+└── [SÍNTESIS] (Módulo de Hallazgos - /sintesis)
+    ├── Identificación de Problemas y Evidencia
+    ├── Clasificación de Severidad y Prioridad
+    └── Plan de Mejora / Recomendaciones de Diseño
+    └── ACCIÓN: Guardar Resultados (Sincronización con Supabase)
+
+2. FLUJO DEL USUARIO (User Flow)
+-------------------------------
+
+FLUJO LINEAL ESTÁNDAR:
+Dashboard (Inicio) -> Crear Nuevo Plan -> Definir Guía -> Registrar Sesión -> Sintetizar Resultados -> Dashboard (Visualizar KPIs finales) -> Exportar PDF
+
+FLUJO DE EDICIÓN (Acceso Directo):
+Dashboard (Inicio) -> Botón "Editar" -> Cargar Datos -> Modificar cualquier etapa -> Re-guardar
+
+3. PRINCIPIOS DE IHC Y ACCESIBILIDAD APLICADOS
+----------------------------------------------
+
+- DISEÑO RESPONSIVO (Table-to-Cards): Todas las tablas se transforman en tarjetas verticales en dispositivos móviles para eliminar el scroll horizontal.
+- ACCESIBILIDAD WCAG 2.2: 0 errores de contraste, etiquetas de formulario explícitas y navegación por teclado optimizada.
+- TIPOGRAFÍA PROFESIONAL: Uso de 'Plus Jakarta Sans' para maximizar la legibilidad y reducir la fatiga visual.
+- VISIBILIDAD DEL ESTADO: Notificaciones ARIA-live para confirmar el guardado exitoso de datos.
+- PREVENCIÓN DE ERRORES: Botón de guardado deshabilitado hasta cumplir con los requisitos mínimos de datos.
+
+4. ESQUEMA DE DATOS
+-------------------
+
+- Test Plan (Entidad Principal)
+  ├── Tareas (Relación 1:N)
+  ├── Participantes (Relación 1:N)
+  ├── Observaciones (Relación N:N vinculada a Tarea y Participante)
+  └── Hallazgos (Relación 1:N)
+
+==============================================
+Última Actualización: 24 de Marzo de 2026
+Versión: 1.0.0 (Release Candidate)
+Herramienta: Usability Dashboard IHC Professional

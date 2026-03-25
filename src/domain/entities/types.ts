@@ -5,6 +5,7 @@ export const SCHEMA_VERSION = "1.0";
 
 export interface Participant {
   id: string;
+  test_plan_id: string;
   name: string;
   profile: string;
 }
@@ -12,15 +13,18 @@ export interface Participant {
 export interface Task {
   id: string;
   test_plan_id: string;
-  task_id_label: string;
+  task_label: string;
   scenario: string;
   expected_result: string;
   main_metric: string;
   success_criteria: string;
+  follow_up_question?: string;
+  order_index: number;
 }
 
 export interface Observation {
   id: string;
+  test_plan_id: string;
   participant_id: string;
   task_id: string;
   success: boolean;
@@ -34,6 +38,7 @@ export interface Observation {
 
 export interface Finding {
   id: string;
+  test_plan_id: string;
   problem: string;
   evidence: string;
   frequency: string;
@@ -45,6 +50,8 @@ export interface Finding {
 
 export interface DashboardMetrics {
   test_plan_id: string;
+  product_name: string;
+  test_date: string;
   total_observations: number;
   successful_tasks: number;
   avg_time_seconds: number;
