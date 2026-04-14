@@ -121,11 +121,44 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+html {
+  /* Forzamos que el scroll vertical SIEMPRE ocupe lugar, evitando el salto */
+  overflow-y: scroll !important;
+  scrollbar-gutter: stable !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;
+    /* Bloqueamos el redimensionamiento del body forzado por Radix */
+    padding-right: 0px !important;
+    margin-right: 0px !important;
+    overflow: auto !important;
   }
 }
+
+
+/* Estilos de Scrollbar Modernos y Finos (IHC Style) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300/50 rounded-full hover:bg-slate-400 transition-colors;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(203, 213, 225, 0.5) transparent;
+}
+
+

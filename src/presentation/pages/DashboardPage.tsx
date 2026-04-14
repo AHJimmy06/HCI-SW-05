@@ -1,17 +1,18 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { SupabaseTestPlanRepository } from "../../infrastructure/repositories/SupabaseRepositories";
-import type { DashboardMetrics } from "../../domain/entities/types";
-import { useTestPlan } from "../context/TestPlanContext";
+import type { DashboardMetrics, FullTestPlan, Task, Observation, Finding, Participant } from "../../domain/entities/types";
+import { useTestPlan } from "../context/useTestPlan";
 import { Button } from "@/components/ui/button";
 import { 
-  BarChart3, TrendingUp, Clock, AlertOctagon, Users, 
+  LayoutDashboard, TrendingUp, Clock, AlertOctagon, Users, 
   FileBarChart, Loader2,
   ChevronUp, ClipboardList, FileText,
-  Edit, Eye, Plus, Trash2, AlertTriangle, Download, Info
+  Edit, Eye, Plus, Trash2, AlertTriangle, Download, Info,
+  Search, Briefcase
 } from "lucide-react";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import autoTable, { type UserOptions } from "jspdf-autotable";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -20,10 +21,11 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
-  const [planDetails, setPlanDetails] = useState<Record<string, any>>({});
+  const [planDetails, setPlanDetails] = useState<Record<string, FullTestPlan>>({});
   const [loadingDetails, setLoadingDetails] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   
   const detailsRef = useRef<HTMLDivElement>(null);
 
@@ -42,9 +44,9 @@ export function DashboardPage() {
       const repo = new SupabaseTestPlanRepository();
       const data = await repo.getAllMetrics();
       setMetrics(Array.isArray(data) ? data : []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error al cargar métricas", err);
-      setError(err.message || "Error al conectar con la base de datos.");
+      setError(err instanceof Error ? err.message : "Error al conectar con la base de datos.");
     } finally {
       setLoading(false);
     }
@@ -53,6 +55,13 @@ export function DashboardPage() {
   useEffect(() => {
     fetchMetrics();
   }, []);
+
+  const filteredMetrics = useMemo(() => {
+    if (!searchTerm.trim()) return metrics;
+    return metrics.filter(m => 
+      m.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [metrics, searchTerm]);
 
   const toggleDetails = async (planId: string) => {
     if (expandedPlan === planId) {
@@ -116,12 +125,14 @@ export function DashboardPage() {
 
     if (details.findings && details.findings.length > 0) {
       doc.setFontSize(16);
-      doc.text("2. Síntesis de Hallazgos", 14, (doc as any).lastAutoTable.finalY + 15);
+      const lastTable = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable;
+      const finalY = lastTable ? lastTable.finalY : 50;
+      doc.text("2. Síntesis de Hallazgos", 14, finalY + 15);
       
-      autoTable(doc, {
-        startY: (doc as any).lastAutoTable.finalY + 20,
+      const findingsOptions: UserOptions = {
+        startY: finalY + 20,
         head: [['Problema', 'Gravedad', 'Prioridad', 'Recomendación']],
-        body: details.findings.map((f: any) => [
+        body: details.findings.map((f: Finding) => [
           f.problem,
           f.severity,
           f.priority,
@@ -129,15 +140,16 @@ export function DashboardPage() {
         ]),
         theme: 'grid',
         headStyles: { fillColor: [15, 23, 42] },
-      });
+      };
+      autoTable(doc, findingsOptions);
     }
 
-    const pageCount = (doc as any).internal.getNumberOfPages();
+    const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text(`Usability Dashboard - Página ${i} de ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+      doc.text(`Usability Dashboard - Página ${i} de ${pageCount}`, pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
     }
 
     doc.save(`Reporte_Usabilidad_${details.product_name || 'Plan'}.pdf`);
@@ -167,7 +179,7 @@ export function DashboardPage() {
           closing_confusing: details.closing_confusing || '',
           closing_change: details.closing_change || '',
         },
-        tasks: (details.tasks || []).map((t: any) => ({
+        tasks: (details.tasks || []).map((t: Task) => ({
           task_label: t.task_label || '',
           scenario: t.scenario || '',
           expected_result: t.expected_result || '',
@@ -175,22 +187,22 @@ export function DashboardPage() {
           success_criteria: t.success_criteria || '',
           follow_up_question: t.follow_up_question || ''
         })),
-        observations: (details.observations || []).map((o: any) => ({
-          ...o,
+        observations: (details.observations || []).map((o: Observation & { participants?: Participant; tasks?: Task }) => ({
           participant_name: o.participants?.name || '',
           participant_profile: o.participants?.profile || '',
           task_label: o.tasks?.task_label || '',
-          success: o.success ? 'Si' : 'No',
+          success: (o.success ? 'Si' : 'No') as 'Si' | 'No',
           time_seconds: o.time_seconds?.toString() || '',
           errors_count: o.errors_count?.toString() || '',
+          key_comments: o.key_comments || '',
           detected_problem: o.detected_problem || '',
           severity: o.severity || 'Baja',
           proposed_improvement: o.proposed_improvement || ''
         })),
-        findings: (details.findings || []).map((f: any) => ({
-          ...f,
+        findings: (details.findings || []).map((f: Finding) => ({
           problem: f.problem || '',
           evidence: f.evidence || '',
+          frequency: f.frequency || '',
           severity: f.severity || '',
           recommendation: f.recommendation || '',
           priority: f.priority || 'Media',
@@ -259,27 +271,49 @@ export function DashboardPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <BarChart3 className="text-primary" aria-hidden="true" size={28} />
-              Dashboard de Resultados
+              <LayoutDashboard className="text-primary" aria-hidden="true" size={28} />
+              Tablero de Control
             </h1>
             <p className="mt-1 text-slate-700 max-w-2xl font-medium">
-              Visualiza los KPIs clave de tus pruebas de usabilidad basados en datos empíricos.
+              Panel de instrumentos para la visualización global de métricas y KPIs de la misión.
             </p>
           </div>
           
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
+            <div className="relative w-full sm:w-64 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={18} />
+              <input 
+                type="text" 
+                placeholder="Lupa de Auditoría..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+              />
+            </div>
             <Button 
               onClick={handleNewPlan} 
-              className="bg-primary hover:bg-primary/90 text-white font-semibold px-8 py-6 rounded-2xl shadow-lg shadow-primary/20 transition-all flex items-center gap-3 active:scale-95"
+              className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white font-semibold px-8 py-6 rounded-2xl shadow-lg shadow-primary/20 transition-all flex items-center gap-3 active:scale-95"
             >
               <Plus size={20} strokeWidth={2.5} aria-hidden="true" />
-              <span className="tracking-wide">CREAR NUEVO PLAN</span>
+              <span className="tracking-wide uppercase">Nueva Misión</span>
             </Button>
           </div>
         </div>
       </header>
 
       <div className="p-6 space-y-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div className="h-12 w-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600">
+              <Briefcase size={24} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Archivo Histórico</p>
+              <p className="text-2xl font-bold text-slate-900">{metrics.length} Proyectos</p>
+            </div>
+          </div>
+        </div>
+
         {loading && metrics.length === 0 ? (
           <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" size={40} /></div>
         ) : error && metrics.length === 0 ? (
@@ -289,14 +323,14 @@ export function DashboardPage() {
             <p className="text-slate-700 font-medium">{error}</p>
             <Button onClick={fetchMetrics} variant="outline" className="mt-4 border-slate-300">Reintentar</Button>
           </div>
-        ) : metrics.length === 0 ? (
+        ) : filteredMetrics.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed border-slate-300 rounded-2xl bg-white">
             <FileBarChart className="text-slate-400 mb-4" size={48} aria-hidden="true" />
-            <h2 className="text-lg font-semibold text-slate-900">Sin datos disponibles</h2>
-            <Button onClick={handleNewPlan} variant="outline" className="mt-4 border-slate-300 font-semibold">Crear mi primer plan</Button>
+            <h2 className="text-lg font-semibold text-slate-900">{searchTerm ? "No se encontraron resultados" : "Sin datos disponibles"}</h2>
+            {!searchTerm && <Button onClick={handleNewPlan} variant="outline" className="mt-4 border-slate-300 font-semibold">Crear mi primer plan</Button>}
           </div>
         ) : (
-          metrics.map((m, idx) => (
+          filteredMetrics.map((m, idx) => (
             <section 
               key={idx} 
               className="space-y-6 border border-slate-200 p-6 rounded-3xl bg-white shadow-sm hover:shadow-md transition-shadow"
@@ -392,7 +426,7 @@ export function DashboardPage() {
                     <div className="lg:col-span-2 space-y-4">
                       <h3 className="font-semibold border-b border-slate-100 pb-2 flex items-center gap-2 text-slate-900"><ClipboardList size={16} aria-hidden="true"/> Hallazgos Clave</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {(planDetails[m.test_plan_id].findings || []).slice(0, 4).map((f: any, fi: number) => (
+                        {(planDetails[m.test_plan_id].findings || []).slice(0, 4).map((f: Finding, fi: number) => (
                           <div key={fi} className="p-4 bg-slate-50 rounded-xl text-sm border border-slate-200 shadow-sm">
                             <div className="flex items-center justify-between mb-2">
                               <span className="font-bold text-slate-900">{f.problem}</span>
