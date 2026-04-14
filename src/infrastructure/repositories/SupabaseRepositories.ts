@@ -6,10 +6,10 @@ import type {
   IFindingRepository,
   IParticipantRepository 
 } from '../../domain/repositories/interfaces';
-import type { Task, Observation, Finding, Participant } from '../../domain/entities/types';
+import type { Task, Observation, Finding, Participant, FullTestPlan, DashboardMetrics } from '../../domain/entities/types';
 
 export class SupabaseTestPlanRepository implements ITestPlanRepository {
-  async create(plan: any): Promise<string> {
+  async create(plan: Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>): Promise<string> {
     const { data, error } = await supabase
       .from('test_plans')
       .insert(plan)
@@ -20,7 +20,7 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
     return data.id;
   }
 
-  async update(id: string, plan: any): Promise<void> {
+  async update(id: string, plan: Partial<Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>>): Promise<void> {
     const { error } = await supabase
       .from('test_plans')
       .update(plan)
@@ -38,7 +38,7 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
     if (error) throw new Error(error.message);
   }
 
-  async getById(id: string): Promise<any> {
+  async getById(id: string): Promise<FullTestPlan> {
     const { data, error } = await supabase
       .from('test_plans')
       .select('*')
@@ -49,7 +49,7 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
     return data;
   }
 
-  async getFullPlan(id: string): Promise<any> {
+  async getFullPlan(id: string): Promise<FullTestPlan> {
     const { data, error } = await supabase
       .from('test_plans')
       .select(`
@@ -69,7 +69,7 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
     return data;
   }
 
-  async getAllMetrics(): Promise<any[]> {
+  async getAllMetrics(): Promise<DashboardMetrics[]> {
     const { data, error } = await supabase
       .from('dashboard_metrics')
       .select('*')
@@ -82,7 +82,6 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
 
 export class SupabaseParticipantRepository implements IParticipantRepository {
   async saveAll(participants: Partial<Participant>[]): Promise<Participant[]> {
-    // Patrón Hotfix: Borrar antiguos del plan y reinsertar para evitar errores de ON CONFLICT
     if (participants.length > 0 && participants[0].test_plan_id) {
       await supabase.from('participants').delete().eq('test_plan_id', participants[0].test_plan_id);
     }
@@ -109,7 +108,6 @@ export class SupabaseParticipantRepository implements IParticipantRepository {
 
 export class SupabaseTaskRepository implements ITaskRepository {
   async saveAll(tasks: Partial<Task>[]): Promise<void> {
-    // Patrón Hotfix: Borrar antiguos del plan y reinsertar
     if (tasks.length > 0 && tasks[0].test_plan_id) {
       await supabase.from('tasks').delete().eq('test_plan_id', tasks[0].test_plan_id);
     }

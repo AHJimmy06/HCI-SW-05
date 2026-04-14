@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useTestPlan } from "../context/TestPlanContext";
+import { useTestPlan } from "../context/useTestPlan";
 import {
   SupabaseTestPlanRepository,
   SupabaseTaskRepository,
@@ -18,8 +18,9 @@ import {
   SupabaseObservationRepository,
 } from "../../infrastructure/repositories/SupabaseRepositories";
 import { type Observation } from "@/domain/entities/types";
+import { Badge } from "@/components/ui/badge";
 import {
-  Lightbulb,
+  Filter,
   Plus,
   Trash2,
   Save,
@@ -27,6 +28,8 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle2,
+  Gem,
+  ShieldAlert
 } from "lucide-react";
 import { NavigationButtons } from "../components/layout/NavigationButtons";
 
@@ -40,14 +43,14 @@ export function FindingsSynthesisPage() {
 
   const isDataComplete = () => {
     const hasPlan = (data.plan.product_name || "").trim() !== "" && (data.plan.objective || "").trim() !== "";
-    const hasTasks = data.tasks.some((t: any) => (t.scenario || "").trim() !== "");
-    const hasObservations = data.observations.some((o: any) => (o.participant_name || "").trim() !== "");
+    const hasTasks = data.tasks.some((t: TaskDraft) => (t.scenario || "").trim() !== "");
+    const hasObservations = data.observations.some((o: ObservationDraft) => (o.participant_name || "").trim() !== "");
     return hasPlan && hasTasks && hasObservations;
   };
 
-  const handleFindingChange = (index: number, field: string, value: string) => {
+  const handleFindingChange = (index: number, field: keyof FindingDraft, value: string) => {
     const newFindings = [...data.findings];
-    newFindings[index] = { ...newFindings[index], [field]: value };
+    newFindings[index] = { ...newFindings[index], [field]: value } as FindingDraft;
     updateFindings(newFindings);
   };
 
@@ -58,9 +61,19 @@ export function FindingsSynthesisPage() {
     }
   };
 
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'Crítica': return 'bg-red-600';
+      case 'Alta': return 'bg-orange-600';
+      case 'Media': return 'bg-yellow-500';
+      case 'Baja': return 'bg-green-600';
+      default: return 'bg-slate-300';
+    }
+  };
+
   const handleSaveAll = async () => {
-    const validPriorities = ["Baja", "Media", "Alta"];
-    const validStatuses = ["Pendiente", "En Progreso", "Resuelto"];
+    const validPriorities: FindingDraft['priority'][] = ["Baja", "Media", "Alta"];
+    const validStatuses: FindingDraft['status'][] = ["Pendiente", "En Progreso", "Resuelto"];
     setLoading(true);
     setSaveStatus({ type: null, message: null });
 
@@ -81,7 +94,7 @@ export function FindingsSynthesisPage() {
       const tasksToSave = data.tasks
         .filter((t) => (t.scenario || "").trim() !== "" || (t.expected_result || "").trim() !== "")
         .map((t, index) => ({
-          test_plan_id: planId,
+          test_plan_id: planId!,
           task_label: t.task_label,
           scenario: t.scenario,
           expected_result: t.expected_result,
@@ -99,7 +112,7 @@ export function FindingsSynthesisPage() {
           data.observations
             .filter(o => (o.participant_name || "").trim() !== "")
             .map(o => [o.participant_name.trim(), {
-              test_plan_id: planId,
+              test_plan_id: planId!,
               name: o.participant_name.trim(),
               profile: o.participant_profile || ""
             }])
@@ -109,8 +122,8 @@ export function FindingsSynthesisPage() {
       const savedParticipants = await participantRepo.saveAll(uniqueParticipants);
       
       const obsToSave: Partial<Observation>[] = data.observations
-        .filter((o) => (o.participant_name || "").trim() !== "" || o.task_label)
-        .map((o) => {
+        .filter((o: ObservationDraft) => (o.participant_name || "").trim() !== "" || o.task_label)
+        .map((o: ObservationDraft) => {
           const participantMatch = savedParticipants.find(p => p.name === o.participant_name.trim());
           const taskMatch = savedTasks.find(st => st.task_label === o.task_label);
           return {
@@ -122,7 +135,7 @@ export function FindingsSynthesisPage() {
             errors_count: parseInt(o.errors_count) || 0,
             key_comments: o.key_comments || "",
             detected_problem: o.detected_problem || "",
-            severity: (o.severity as any) || "Baja",
+            severity: o.severity || "Baja",
             proposed_improvement: o.proposed_improvement || "",
           };
         });
@@ -132,13 +145,13 @@ export function FindingsSynthesisPage() {
       const findingsToSave = data.findings
         .filter((f) => (f.problem || "").trim() !== "")
         .map((f) => ({
-          test_plan_id: planId,
+          test_plan_id: planId!,
           problem: f.problem,
           evidence: f.evidence,
           severity: f.severity,
           recommendation: f.recommendation,
-          priority: (validPriorities.includes(f.priority) ? f.priority : "Media") as any,
-          status: (validStatuses.includes(f.status) ? f.status : "Pendiente") as any,
+          priority: validPriorities.includes(f.priority) ? f.priority : "Media",
+          status: validStatuses.includes(f.status) ? f.status : "Pendiente",
         }));
 
       await findingRepo.saveAll(findingsToSave);
@@ -148,10 +161,11 @@ export function FindingsSynthesisPage() {
         type: "success",
         message: data.test_plan_id ? "¡Prueba actualizada!" : "¡Prueba guardada con éxito!",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido";
       setSaveStatus({
         type: "error",
-        message: "Error al guardar: " + (error.message || "Error desconocido"),
+        message: "Error al guardar: " + errorMessage,
       });
     } finally {
       setLoading(false);
@@ -181,14 +195,14 @@ export function FindingsSynthesisPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <Lightbulb className="text-primary" aria-hidden="true" size={28} />
-              Síntesis y Plan de Mejora
+              <Filter className="text-primary" aria-hidden="true" size={28} />
+              El Tamiz (Síntesis)
             </h1>
-            <p className="mt-1 text-slate-700 max-w-2xl text-sm font-medium">Transforma las observaciones en hallazgos accionables.</p>
+            <p className="mt-1 text-slate-700 max-w-2xl text-sm font-medium">Proceso de filtrado para separar la arena de los hallazgos críticos y transformar las observaciones en oro.</p>
           </div>
           <div className="flex items-center gap-2 text-sm text-red-900 font-semibold bg-red-100 px-4 py-2 rounded-full border-2 border-red-200">
-            <AlertTriangle size={18} aria-hidden="true" />
-            IHC: Prioriza por severidad y frecuencia
+            <Gem size={18} aria-hidden="true" />
+            IHC: Separa la arena del oro accionable
           </div>
         </div>
       </header>
@@ -197,13 +211,13 @@ export function FindingsSynthesisPage() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary" aria-hidden="true">
-              <Lightbulb size={18} />
+              <Gem size={18} />
             </div>
-            <h2 className="text-xl font-bold text-slate-900">Hallazgos Identificados</h2>
+            <h2 className="text-xl font-bold text-slate-900">Material Valioso (Hallazgos)</h2>
           </div>
           <Button onClick={addFinding} variant="outline" className="border-primary text-primary font-semibold shadow-sm flex items-center gap-2 hover:bg-primary/5">
             <Plus size={18} aria-hidden="true" strokeWidth={2.5} />
-            <span className="hidden sm:inline">Agregar Hallazgo</span>
+            <span className="hidden sm:inline">Nuevo Hallazgo</span>
             <span className="sm:hidden text-xs">Nuevo</span>
           </Button>
         </div>
@@ -213,10 +227,15 @@ export function FindingsSynthesisPage() {
             <table className="w-full text-sm text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-[20%]">Problema</th>
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-[25%]">Evidencia</th>
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-28 text-center">Severidad</th>
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-[25%]">Recomendación</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-[20%]">Impureza (Problema)</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-[25%]">Evidencia de Campo</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-28 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <ShieldAlert size={14} className="text-slate-400" />
+                      Semáforo
+                    </div>
+                  </th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-[25%]">Refinamiento (Recomendación)</th>
                   <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-28 text-center">Prioridad</th>
                   <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-12 text-center">X</th>
                 </tr>
@@ -230,10 +249,37 @@ export function FindingsSynthesisPage() {
                     <td className="px-2 py-3">
                       <Input id={`find-evid-${index}`} value={finding.evidence} aria-label={`Evidencia hallazgo ${index + 1}`} onChange={(e) => handleFindingChange(index, "evidence", e.target.value)} className="h-9 text-xs border-slate-200 font-medium text-slate-900" placeholder="Evidencia..." />
                     </td>
-                    <td className="px-2 py-3">
+                    <td className="px-2 py-3 text-center">
                       <Select value={finding.severity} onValueChange={(val) => handleFindingChange(index, "severity", val)}>
-                        <SelectTrigger aria-label={`Severidad hallazgo ${index + 1}`} className="h-9 w-24 mx-auto text-xs border-slate-300 font-semibold text-slate-800"><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value="Baja">Baja</SelectItem><SelectItem value="Media">Media</SelectItem><SelectItem value="Alta">Alta</SelectItem></SelectContent>
+                        <SelectTrigger aria-label={`Severidad hallazgo ${index + 1}`} className="h-9 w-24 mx-auto text-xs border-slate-300 font-semibold text-slate-800">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Baja">
+                            <div className="flex items-center gap-2 text-xs">
+                              <div className="h-2 w-2 rounded-full bg-green-600" />
+                              Baja
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Media">
+                            <div className="flex items-center gap-2 text-xs">
+                              <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                              Media
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Alta">
+                            <div className="flex items-center gap-2 text-xs">
+                              <div className="h-2 w-2 rounded-full bg-orange-600" />
+                              Alta
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Crítica">
+                            <div className="flex items-center gap-2 text-xs">
+                              <div className="h-2 w-2 rounded-full bg-red-600" />
+                              Crítica
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
                       </Select>
                     </td>
                     <td className="px-2 py-3">
@@ -242,7 +288,11 @@ export function FindingsSynthesisPage() {
                     <td className="px-2 py-3">
                       <Select value={finding.priority} onValueChange={(val) => handleFindingChange(index, "priority", val)}>
                         <SelectTrigger aria-label={`Prioridad hallazgo ${index + 1}`} className="h-9 w-24 mx-auto text-xs border-slate-300 font-semibold text-slate-800"><SelectValue /></SelectTrigger>
-                        <SelectContent><SelectItem value="Baja">Baja</SelectItem><SelectItem value="Media">Media</SelectItem><SelectItem value="Alta">Alta</SelectItem></SelectContent>
+                        <SelectContent>
+                          <SelectItem value="Baja"><Badge variant="outline" className="text-[10px] uppercase font-bold">Baja</Badge></SelectItem>
+                          <SelectItem value="Media"><Badge variant="secondary" className="text-[10px] uppercase font-bold">Media</Badge></SelectItem>
+                          <SelectItem value="Alta"><Badge variant="destructive" className="text-[10px] uppercase font-bold">Alta</Badge></SelectItem>
+                        </SelectContent>
                       </Select>
                     </td>
                     <td className="px-2 py-3 text-center">
@@ -263,11 +313,11 @@ export function FindingsSynthesisPage() {
                 </div>
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <label htmlFor={`mobile-find-prob-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Problema Detectado</label>
+                    <label htmlFor={`mobile-find-prob-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Impureza (Problema)</label>
                     <Input id={`mobile-find-prob-${index}`} value={finding.problem} onChange={(e) => handleFindingChange(index, "problem", e.target.value)} className="h-11 text-sm border-slate-300 font-medium text-slate-900" />
                   </div>
                   <div className="space-y-1.5">
-                    <label htmlFor={`mobile-find-recom-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Recomendación</label>
+                    <label htmlFor={`mobile-find-recom-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Refinamiento</label>
                     <Input id={`mobile-find-recom-${index}`} value={finding.recommendation} onChange={(e) => handleFindingChange(index, "recommendation", e.target.value)} className="h-11 text-sm border-primary/30 bg-primary/5 font-semibold text-primary" />
                   </div>
                 </div>
@@ -279,7 +329,7 @@ export function FindingsSynthesisPage() {
         <div className="flex flex-col items-center justify-center py-10 space-y-10 w-full">
           <div className="max-w-md w-full text-center flex flex-col items-center px-4">
             <p className="text-sm text-slate-700 mb-8 font-medium leading-relaxed">
-              Al finalizar, toda la información se sincronizará con tu dashboard central.
+              Al finalizar el tamizado, toda la información se sincronizará con tu tablero de control central.
             </p>
 
             <Button

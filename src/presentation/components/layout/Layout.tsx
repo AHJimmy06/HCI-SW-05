@@ -1,16 +1,24 @@
 import { Outlet, NavLink, useLocation } from "react-router-dom";
-import { TestPlanProvider, useTestPlan } from "../../context/TestPlanContext";
+import { TestPlanProvider } from "../../context/TestPlanContext";
+import { useTestPlan } from "../../context/useTestPlan";
+import { 
+  LayoutDashboard, 
+  ClipboardList, 
+  BookOpen, 
+  Edit3, 
+  Filter 
+} from "lucide-react";
 
 function NavContent() {
   const { isStepComplete } = useTestPlan();
   const location = useLocation();
 
   const navItems = [
-    { to: "/", label: "Dashboard", step: null },
-    { to: "/plan", label: "Plan", step: 'plan' },
-    { to: "/guia", label: "Guía", step: 'guia' },
-    { to: "/registro", label: "Registro", step: 'registro' },
-    { to: "/sintesis", label: "Síntesis", step: 'sintesis' }
+    { to: "/", label: "Tablero de Control", icon: LayoutDashboard, step: null },
+    { to: "/plan", label: "Plan de Vuelo", icon: ClipboardList, step: 'plan' },
+    { to: "/guia", label: "Guía del Capitán", icon: BookOpen, step: 'guia' },
+    { to: "/registro", label: "Bitácora de Campo", icon: Edit3, step: 'registro' },
+    { to: "/sintesis", label: "El Tamiz", icon: Filter, step: 'sintesis' }
   ];
 
   const canNavigateTo = (step: string | null) => {
@@ -45,7 +53,8 @@ function NavContent() {
 
             <nav className="flex items-center gap-1 md:gap-4 overflow-x-auto no-scrollbar" aria-label="Navegación principal">
               {navItems.map((item) => {
-                const disabled = !canNavigateTo(item.step as any);
+                const disabled = !canNavigateTo(item.step as 'plan' | 'guia' | 'registro' | 'sintesis' | null);
+                const Icon = item.icon;
                 return (
                   <NavLink
                     key={item.to}
@@ -54,7 +63,7 @@ function NavContent() {
                       if (disabled) e.preventDefault();
                     }}
                     className={({ isActive }) =>
-                      `inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                      `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                         disabled 
                           ? "opacity-40 cursor-not-allowed text-slate-500" 
                           : isActive 
@@ -63,7 +72,8 @@ function NavContent() {
                       }`
                     }
                   >
-                    {item.label}
+                    <Icon size={16} aria-hidden="true" />
+                    <span className="hidden lg:inline">{item.label}</span>
                   </NavLink>
                 );
               })}

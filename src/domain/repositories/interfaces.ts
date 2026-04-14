@@ -1,17 +1,11 @@
-import type { Task, Observation, Finding, Participant } from "@/domain/entities/types";
+import type { DashboardMetrics, FullTestPlan, Task, Participant, Observation, Finding } from "../entities/types";
 
 export interface ITestPlanRepository {
-  create(plan: any): Promise<string>;
-  update(id: string, plan: any): Promise<void>;
+  getAllMetrics(): Promise<DashboardMetrics[]>;
+  getFullPlan(id: string): Promise<FullTestPlan>;
+  create(data: Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>): Promise<string>;
+  update(id: string, data: Partial<Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>>): Promise<void>;
   delete(id: string): Promise<void>;
-  getById(id: string): Promise<any>;
-  getAllMetrics(): Promise<any[]>;
-  getFullPlan(id: string): Promise<any>;
-}
-
-export interface IParticipantRepository {
-  saveAll(participants: Partial<Participant>[]): Promise<Participant[]>;
-  getByPlanId(planId: string): Promise<Participant[]>;
 }
 
 export interface ITaskRepository {
@@ -19,14 +13,14 @@ export interface ITaskRepository {
   getByPlanId(planId: string): Promise<Task[]>;
 }
 
+export interface IParticipantRepository {
+  saveAll(participants: Partial<Participant>[]): Promise<Participant[]>;
+}
+
 export interface IObservationRepository {
-  save(observation: Partial<Observation>): Promise<void>;
   saveAll(observations: Partial<Observation>[]): Promise<void>;
-  getByPlanId(planId: string): Promise<Observation[]>;
 }
 
 export interface IFindingRepository {
-  save(finding: Partial<Finding>): Promise<void>;
   saveAll(findings: Partial<Finding>[]): Promise<void>;
-  getByPlanId(planId: string): Promise<Finding[]>;
 }

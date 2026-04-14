@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
-import { useTestPlan } from "../../context/TestPlanContext";
+import { useTestPlan } from "../../context/useTestPlan";
 
 interface NavigationButtonsProps {
   currentStep: 'plan' | 'guia' | 'registro' | 'sintesis';
@@ -43,7 +43,7 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
           >
             <ChevronLeft size={20} aria-hidden="true" />
             <div className="flex flex-col items-start text-left">
-              <span className="text-xs uppercase font-bold text-slate-500">Paso Anterior</span>
+              <span className="text-xs uppercase font-bold text-slate-500">Maniobra Previa</span>
               <span className="font-bold uppercase tracking-tight">Regresar</span>
             </div>
           </Button>
@@ -57,7 +57,7 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
             className="absolute -top-14 flex items-center gap-2 text-red-900 bg-red-50 px-4 py-2 rounded-xl border-2 border-red-200 shadow-md animate-in fade-in slide-in-from-bottom-2 duration-300"
           >
             <AlertCircle size={16} className="shrink-0 text-red-600" aria-hidden="true" />
-            <span className="text-xs font-bold whitespace-nowrap">Completa los campos obligatorios para continuar</span>
+            <span className="text-xs font-bold whitespace-nowrap">Completa los reportes obligatorios para avanzar</span>
           </div>
         )}
         
@@ -77,8 +77,8 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
               }`}
             >
               <div className="flex flex-col items-end text-right">
-                <span className="text-xs uppercase font-bold opacity-90">Siguiente Paso</span>
-                <span className="text-lg font-bold uppercase tracking-tight">Continuar</span>
+                <span className="text-xs uppercase font-bold opacity-90">Siguiente Maniobra</span>
+                <span className="text-lg font-bold uppercase tracking-tight">Avanzar Misión</span>
               </div>
               <div className={`p-2 rounded-lg ${isCurrentComplete ? 'bg-white/20' : 'bg-slate-300'} transition-colors group-hover:translate-x-1`}>
                 <ChevronRight size={24} aria-hidden="true" />

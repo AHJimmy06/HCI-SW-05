@@ -90,11 +90,15 @@ WHERE tp.deleted_at IS NULL
 GROUP BY tp.id, tp.product_name, tp.module_name, tp.test_date, tp.created_at;
 
 --------------------------------------------------------------------------------
--- MODIFICACIONES Y ACTUALIZACIONES
+-- MODIFICACIONES Y ACTUALIZACIONES (REGISTRO LOG)
 --------------------------------------------------------------------------------
 
+-- FECHA: 2026-03-24
+-- DESCRIPCIÓN: Implementación de Soft Delete
 ALTER TABLE test_plans ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL;
 
--- Restricciones de unicidad para soporte de Hotfix v1.0.1
+-- FECHA: 2026-03-24
+-- DESCRIPCIÓN: Soporte para Hotfix v1.0.1 (Optimización de concurrencia y guardado)
+-- Nota: Estas restricciones permiten identificar duplicados a nivel de BD para lógica Upsert/Delete-Insert.
 ALTER TABLE tasks ADD CONSTRAINT tasks_test_plan_id_task_label_key UNIQUE (test_plan_id, task_label);
 ALTER TABLE participants ADD CONSTRAINT participants_test_plan_id_name_key UNIQUE (test_plan_id, name);

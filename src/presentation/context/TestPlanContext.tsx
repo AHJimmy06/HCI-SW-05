@@ -1,37 +1,15 @@
-import { createContext, useContext, useState, useMemo, type ReactNode, useCallback } from 'react';
-
-interface FullTestData {
-  test_plan_id?: string;
-  plan: {
-    product_name: string;
-    module_name: string;
-    objective: string;
-    user_profile: string;
-    method: string;
-    test_date: string;
-    place_channel: string;
-    moderator_name: string;
-    observer_name: string;
-    tool_prototype: string;
-    admin_notes: string;
-    closing_easy: string;
-    closing_confusing: string;
-    closing_change: string;
-  };
-  tasks: any[];
-  observations: any[];
-  findings: any[];
-}
+import { createContext, useState, useMemo, type ReactNode, useCallback } from 'react';
+import type { TaskDraft, ObservationDraft, FindingDraft, FullTestData } from '../../domain/entities/types';
 
 interface TestPlanContextType {
   data: FullTestData;
   updatePlan: (field: keyof FullTestData['plan'], value: string) => void;
-  updateTasks: (tasks: any[]) => void;
+  updateTasks: (tasks: TaskDraft[]) => void;
   addTask: () => void;
   deleteTask: (index: number) => void;
-  updateObservations: (observations: any[]) => void;
+  updateObservations: (observations: ObservationDraft[]) => void;
   addObservation: () => void;
-  updateFindings: (findings: any[]) => void;
+  updateFindings: (findings: FindingDraft[]) => void;
   addFinding: () => void;
   updateTestPlanId: (id: string) => void;
   addMultipleTasks: (count: number) => void;
@@ -54,7 +32,7 @@ const initialData: FullTestData = {
   findings: [{ problem: '', evidence: '', frequency: '', severity: '', recommendation: '', priority: 'Media', status: 'Pendiente' }],
 };
 
-const TestPlanContext = createContext<TestPlanContextType | undefined>(undefined);
+export const TestPlanContext = createContext<TestPlanContextType | undefined>(undefined);
 
 export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
   const [data, setData] = useState<FullTestData>(initialData);
@@ -64,7 +42,7 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
     setData(prev => ({ ...prev, plan: { ...prev.plan, [field]: value } }));
   }, []);
 
-  const updateTasks = useCallback((tasks: any[]) => setData(prev => ({ ...prev, tasks })), []);
+  const updateTasks = useCallback((tasks: TaskDraft[]) => setData(prev => ({ ...prev, tasks })), []);
 
   const addTask = useCallback(() => setData(prev => {
     const newTasks = [...prev.tasks, { task_label: '', scenario: '', expected_result: '', main_metric: '', success_criteria: '', follow_up_question: '' }];
@@ -95,13 +73,13 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
-  const updateObservations = useCallback((observations: any[]) => setData(prev => ({ ...prev, observations })), []);
+  const updateObservations = useCallback((observations: ObservationDraft[]) => setData(prev => ({ ...prev, observations })), []);
   const addObservation = useCallback(() => setData(prev => ({
     ...prev,
     observations: [...prev.observations, { participant_name: '', participant_profile: '', task_label: '', success: 'Si', time_seconds: '', errors_count: '', key_comments: '', detected_problem: '', severity: 'Baja', proposed_improvement: '' }]
   })), []);
 
-  const updateFindings = useCallback((findings: any[]) => setData(prev => ({ ...prev, findings })), []);
+  const updateFindings = useCallback((findings: FindingDraft[]) => setData(prev => ({ ...prev, findings })), []);
   const addFinding = useCallback(() => setData(prev => ({
     ...prev,
     findings: [...prev.findings, { problem: '', evidence: '', frequency: '', severity: '', recommendation: '', priority: 'Media', status: 'Pendiente' }]
@@ -183,10 +161,4 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </TestPlanContext.Provider>
   );
-};
-
-export const useTestPlan = () => {
-  const context = useContext(TestPlanContext);
-  if (!context) throw new Error('useTestPlan must be used within a TestPlanProvider');
-  return context;
 };

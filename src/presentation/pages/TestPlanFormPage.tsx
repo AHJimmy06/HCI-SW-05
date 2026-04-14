@@ -1,7 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useTestPlan } from "../context/TestPlanContext";
-import { Plus, Trash2, Info, LayoutDashboard, ClipboardList, Users, Settings } from "lucide-react";
+import { useTestPlan } from "../context/useTestPlan";
+import { Plus, Trash2, Info, ClipboardList, Users, Settings } from "lucide-react";
 import { NavigationButtons } from "../components/layout/NavigationButtons";
 
 export function TestPlanFormPage() {
@@ -23,16 +23,16 @@ export function TestPlanFormPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <LayoutDashboard className="text-primary" aria-hidden="true" size={28} />
-              Plan de Prueba de Usabilidad
+              <ClipboardList className="text-primary" aria-hidden="true" size={28} />
+              Plan de Vuelo
             </h1>
             <p className="mt-1 text-slate-700 max-w-2xl text-sm font-medium">
-              Define el contexto, los objetivos y las tareas para tu sesión de evaluación.
+              Preparación detallada de la ruta, objetivos y logística previa al despegue de la misión.
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-primary font-semibold bg-primary/10 px-4 py-2 rounded-full border border-primary/20">
             <Info size={18} aria-hidden="true" />
-            IHC: Objetivos SMART recomendados
+            Checklist de Pre-vuelo
           </div>
         </div>
       </header>
@@ -44,13 +44,13 @@ export function TestPlanFormPage() {
               <Settings size={18} />
             </div>
             <h2 id="context-heading" className="text-xl font-bold text-slate-900">
-              1. Contexto General
+              1. Coordenadas de Misión
             </h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="space-y-2">
-              <label htmlFor="product_name" className="text-sm font-semibold text-slate-800 block">Producto / Servicio</label>
+              <label htmlFor="product_name" className="text-sm font-semibold text-slate-800 block">Producto / Nave</label>
               <Input 
                 id="product_name"
                 value={data.plan.product_name}
@@ -60,7 +60,7 @@ export function TestPlanFormPage() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="module_name" className="text-sm font-semibold text-slate-800 block">Pantalla / Módulo</label>
+              <label htmlFor="module_name" className="text-sm font-semibold text-slate-800 block">Módulo / Compartimento</label>
               <Input 
                 id="module_name"
                 value={data.plan.module_name}
@@ -70,7 +70,7 @@ export function TestPlanFormPage() {
               />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <label htmlFor="objective" className="text-sm font-semibold text-slate-800 block">Objetivo del test</label>
+              <label htmlFor="objective" className="text-sm font-semibold text-slate-800 block">Objetivo de la Misión</label>
               <Input 
                 id="objective"
                 value={data.plan.objective}
@@ -80,7 +80,7 @@ export function TestPlanFormPage() {
               />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <label htmlFor="user_profile" className="text-sm font-semibold text-slate-800 block">Perfil del Público Objetivo</label>
+              <label htmlFor="user_profile" className="text-sm font-semibold text-slate-800 block">Perfil de la Tripulación (Usuario)</label>
               <Input 
                 id="user_profile"
                 value={data.plan.user_profile}
@@ -91,7 +91,7 @@ export function TestPlanFormPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="method" className="text-sm font-semibold text-slate-800 block">Método</label>
+              <label htmlFor="method" className="text-sm font-semibold text-slate-800 block">Método de Navegación</label>
               <Input 
                 id="method"
                 value={data.plan.method}
@@ -101,7 +101,7 @@ export function TestPlanFormPage() {
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="test_date" className="text-sm font-semibold text-slate-800 block">Fecha</label>
+              <label htmlFor="test_date" className="text-sm font-semibold text-slate-800 block">Fecha de Lanzamiento</label>
               <Input 
                 id="test_date"
                 type="date" 
@@ -111,7 +111,7 @@ export function TestPlanFormPage() {
               />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <label htmlFor="place_channel" className="text-sm font-semibold text-slate-800 block">Lugar / Canal</label>
+              <label htmlFor="place_channel" className="text-sm font-semibold text-slate-800 block">Canal de Comunicación</label>
               <Input 
                 id="place_channel"
                 value={data.plan.place_channel}
@@ -130,7 +130,7 @@ export function TestPlanFormPage() {
                 <ClipboardList size={18} />
               </div>
               <h2 id="tasks-heading" className="text-xl font-bold text-slate-900">
-                2. Tareas del test
+                2. Hoja de Ruta (Tareas)
               </h2>
             </div>
             <Button 
@@ -139,7 +139,7 @@ export function TestPlanFormPage() {
               className="border-primary text-primary hover:bg-primary/5 font-semibold shadow-sm flex items-center gap-2"
             >
               <Plus size={18} aria-hidden="true" strokeWidth={2.5} />
-              Agregar Tarea
+              Agregar Maniobra
             </Button>
           </div>
 
@@ -149,8 +149,8 @@ export function TestPlanFormPage() {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-16">ID</th>
-                    <th scope="col" className="px-4 py-4 font-bold text-slate-900">Escenario / Tarea</th>
-                    <th scope="col" className="px-4 py-4 font-bold text-slate-900">Resultado esperado</th>
+                    <th scope="col" className="px-4 py-4 font-bold text-slate-900">Escenario de Misión</th>
+                    <th scope="col" className="px-4 py-4 font-bold text-slate-900">Objetivo Esperado</th>
                     <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-14 text-center">Acción</th>
                   </tr>
                 </thead>
@@ -205,11 +205,11 @@ export function TestPlanFormPage() {
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-1.5">
-                      <label htmlFor={`mobile-scenario-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-wider">Escenario / Tarea</label>
+                      <label htmlFor={`mobile-scenario-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-wider">Escenario de Misión</label>
                       <Input id={`mobile-scenario-${index}`} value={task.scenario} onChange={(e) => handleTaskChange(index, 'scenario', e.target.value)} className="h-11 text-sm border-slate-300 font-medium text-slate-900" />
                     </div>
                     <div className="space-y-1.5">
-                      <label htmlFor={`mobile-result-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-wider">Resultado esperado</label>
+                      <label htmlFor={`mobile-result-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-wider">Objetivo Esperado</label>
                       <Input id={`mobile-result-${index}`} value={task.expected_result} onChange={(e) => handleTaskChange(index, 'expected_result', e.target.value)} className="h-11 text-sm border-slate-300 font-medium text-slate-900" />
                     </div>
                   </div>
@@ -225,33 +225,33 @@ export function TestPlanFormPage() {
               <Users size={18} />
             </div>
             <h2 id="logistics-heading" className="text-xl font-bold text-slate-900">
-              3. Roles y Logística
+              3. Tripulación y Equipamiento
             </h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="space-y-2">
-              <label htmlFor="moderator_name" className="text-sm font-semibold text-slate-800 block">Moderador</label>
+              <label htmlFor="moderator_name" className="text-sm font-semibold text-slate-800 block">Capitán (Moderador)</label>
               <Input 
                 id="moderator_name"
                 value={data.plan.moderator_name}
                 onChange={(e) => updatePlan('moderator_name', e.target.value)}
                 className="bg-white border-slate-300 focus:border-primary font-medium text-slate-900" 
-                placeholder="Nombre del moderador"
+                placeholder="Nombre del capitán"
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="observer_name" className="text-sm font-semibold text-slate-800 block">Observador</label>
+              <label htmlFor="observer_name" className="text-sm font-semibold text-slate-800 block">Navegante (Observador)</label>
               <Input 
                 id="observer_name"
                 value={data.plan.observer_name}
                 onChange={(e) => updatePlan('observer_name', e.target.value)}
                 className="bg-white border-slate-300 focus:border-primary font-medium text-slate-900" 
-                placeholder="Nombre del observador"
+                placeholder="Nombre del navegante"
               />
             </div>
             <div className="space-y-2">
-              <label htmlFor="tool_prototype" className="text-sm font-semibold text-slate-800 block">Herramienta / Prototipo</label>
+              <label htmlFor="tool_prototype" className="text-sm font-semibold text-slate-800 block">Equipo / Prototipo</label>
               <Input 
                 id="tool_prototype"
                 value={data.plan.tool_prototype}
@@ -269,7 +269,7 @@ export function TestPlanFormPage() {
               <ClipboardList size={18} />
             </div>
             <h2 id="notes-heading" className="text-xl font-bold text-slate-900">
-              4. Notas Adicionales
+              4. Observaciones de Base
             </h2>
           </div>
           <div className="space-y-2">
