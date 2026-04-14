@@ -144,12 +144,12 @@ export function DashboardPage() {
       autoTable(doc, findingsOptions);
     }
 
-    const pageCount = doc.internal.getNumberOfPages();
+    const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150);
-      doc.text(`Usability Dashboard - Página ${i} de ${pageCount}`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+      doc.text(`Usability Dashboard - Página ${i} de ${pageCount}`, pageWidth / 2, doc.internal.pageSize.height - 10, { align: 'center' });
     }
 
     doc.save(`Reporte_Usabilidad_${details.product_name || 'Plan'}.pdf`);
@@ -191,9 +191,10 @@ export function DashboardPage() {
           participant_name: o.participants?.name || '',
           participant_profile: o.participants?.profile || '',
           task_label: o.tasks?.task_label || '',
-          success: o.success ? 'Si' : 'No' as 'Si' | 'No',
+          success: (o.success ? 'Si' : 'No') as 'Si' | 'No',
           time_seconds: o.time_seconds?.toString() || '',
           errors_count: o.errors_count?.toString() || '',
+          key_comments: o.key_comments || '',
           detected_problem: o.detected_problem || '',
           severity: o.severity || 'Baja',
           proposed_improvement: o.proposed_improvement || ''

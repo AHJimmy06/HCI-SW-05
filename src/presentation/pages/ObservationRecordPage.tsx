@@ -27,16 +27,6 @@ export function ObservationRecordPage() {
     }
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'Crítica': return 'bg-red-600';
-      case 'Alta': return 'bg-orange-600';
-      case 'Media': return 'bg-yellow-500';
-      case 'Baja': return 'bg-green-600';
-      default: return 'bg-slate-300';
-    }
-  };
-
   return (
     <div className="flex flex-col min-h-full">
       <header className="px-6 py-8 border-b border-slate-200 bg-slate-50">

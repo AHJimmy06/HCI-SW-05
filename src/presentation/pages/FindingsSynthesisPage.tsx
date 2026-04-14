@@ -17,7 +17,12 @@ import {
   SupabaseFindingRepository,
   SupabaseObservationRepository,
 } from "../../infrastructure/repositories/SupabaseRepositories";
-import { type Observation } from "@/domain/entities/types";
+import { 
+  type Observation, 
+  type TaskDraft, 
+  type ObservationDraft, 
+  type FindingDraft 
+} from "@/domain/entities/types";
 import { Badge } from "@/components/ui/badge";
 import {
   Filter,
@@ -58,16 +63,6 @@ export function FindingsSynthesisPage() {
     if (data.findings.length > 1) {
       const newFindings = data.findings.filter((_, i) => i !== index);
       updateFindings(newFindings);
-    }
-  };
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'Crítica': return 'bg-red-600';
-      case 'Alta': return 'bg-orange-600';
-      case 'Media': return 'bg-yellow-500';
-      case 'Baja': return 'bg-green-600';
-      default: return 'bg-slate-300';
     }
   };
 
