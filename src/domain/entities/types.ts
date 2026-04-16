@@ -1,6 +1,5 @@
 // src/domain/entities/types.ts
 
-// Añadimos una constante vacía para que el módulo tenga presencia en tiempo de ejecución
 export const SCHEMA_VERSION = "1.0";
 
 export interface Participant {
@@ -48,6 +47,28 @@ export interface Finding {
   status: 'Pendiente' | 'En Progreso' | 'Resuelto';
 }
 
+export interface FullTestPlan {
+  id?: string;
+  product_name: string;
+  module_name: string;
+  objective: string;
+  user_profile: string;
+  method: string;
+  test_date: string;
+  place_channel: string;
+  moderator_name: string;
+  observer_name: string;
+  tool_prototype: string;
+  admin_notes: string;
+  closing_easy: string;
+  closing_confusing: string;
+  closing_change: string;
+  tasks: Task[];
+  participants: Participant[];
+  observations: (Observation & { participants?: Participant; tasks?: Task })[];
+  findings: Finding[];
+}
+
 export interface DashboardMetrics {
   test_plan_id: string;
   product_name: string;
@@ -57,4 +78,49 @@ export interface DashboardMetrics {
   avg_time_seconds: number;
   total_errors: number;
   success_rate: number;
+}
+
+// Draft Types for Context
+export interface TaskDraft extends Omit<Task, 'id' | 'test_plan_id' | 'order_index'> {
+  id?: string;
+}
+
+export interface ObservationDraft {
+  participant_name: string;
+  participant_profile: string;
+  task_label: string;
+  success: 'Si' | 'No';
+  time_seconds: string;
+  errors_count: string;
+  key_comments: string;
+  detected_problem: string;
+  severity: Observation['severity'];
+  proposed_improvement: string;
+}
+
+export interface FindingDraft extends Omit<Finding, 'id' | 'test_plan_id'> {
+  id?: string;
+}
+
+export interface FullTestData {
+  test_plan_id?: string;
+  plan: {
+    product_name: string;
+    module_name: string;
+    objective: string;
+    user_profile: string;
+    method: string;
+    test_date: string;
+    place_channel: string;
+    moderator_name: string;
+    observer_name: string;
+    tool_prototype: string;
+    admin_notes: string;
+    closing_easy: string;
+    closing_confusing: string;
+    closing_change: string;
+  };
+  tasks: TaskDraft[];
+  observations: ObservationDraft[];
+  findings: FindingDraft[];
 }

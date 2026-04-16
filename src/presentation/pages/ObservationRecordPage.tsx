@@ -7,8 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useTestPlan } from "../context/TestPlanContext";
-import { ClipboardCheck, Plus, Trash2, Timer, AlertCircle, User, CheckCircle2 } from "lucide-react";
+import { useTestPlan } from "../context/useTestPlan";
+import { Edit3, Plus, Trash2, Timer, AlertCircle, CheckCircle2, Compass, ShieldAlert } from "lucide-react";
 import { NavigationButtons } from "../components/layout/NavigationButtons";
 
 export function ObservationRecordPage() {
@@ -33,16 +33,16 @@ export function ObservationRecordPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <ClipboardCheck className="text-primary" aria-hidden="true" size={28} />
-              Registro de Observaciones
+              <Edit3 className="text-primary" aria-hidden="true" size={28} />
+              Bitácora de Campo
             </h1>
             <p className="mt-1 text-slate-700 max-w-2xl text-sm font-medium">
-              Captura el desempeño de los participantes en tiempo real con métricas precisas.
+              Diario de notas tomadas en vivo para capturar el desempeño y las reacciones de la tripulación en tiempo real.
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-primary font-semibold bg-primary/10 px-4 py-2 rounded-full border-2 border-primary/20">
             <Timer size={18} aria-hidden="true" />
-            IHC: Registra errores inmediatamente
+            IHC: Registro inmutable de la misión
           </div>
         </div>
       </header>
@@ -51,9 +51,9 @@ export function ObservationRecordPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary" aria-hidden="true">
-              <User size={18} />
+              <Compass size={18} />
             </div>
-            <h2 className="text-xl font-bold text-slate-900">Datos de la Sesión</h2>
+            <h2 className="text-xl font-bold text-slate-900">Registro de Exploración</h2>
           </div>
           <Button 
             onClick={addObservation} 
@@ -61,7 +61,7 @@ export function ObservationRecordPage() {
             className="border-primary text-primary hover:bg-primary/5 font-semibold shadow-sm flex items-center gap-2"
           >
             <Plus size={18} aria-hidden="true" strokeWidth={2.5} />
-            <span className="hidden sm:inline">Agregar Participante</span>
+            <span className="hidden sm:inline">Nuevo Tripulante</span>
             <span className="sm:hidden text-xs">Agregar</span>
           </Button>
         </div>
@@ -71,13 +71,18 @@ export function ObservationRecordPage() {
             <table className="w-full text-sm text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-32">Participante</th>
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-16 text-center">T#</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-32">Tripulante</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-16 text-center">M#</th>
                   <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-24 text-center">Éxito</th>
                   <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-24 text-center">Tiempo (s)</th>
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-20 text-center">Errores</th>
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 min-w-[200px]">Problema Detectado</th>
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-32 text-center">Severidad</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-20 text-center">Turbulencias</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 min-w-[200px]">Anomalía Detectada</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-32 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <ShieldAlert size={14} className="text-slate-400" />
+                      Semáforo
+                    </div>
+                  </th>
                   <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-14 text-center">Acción</th>
                 </tr>
               </thead>
@@ -89,7 +94,7 @@ export function ObservationRecordPage() {
                         <Input 
                           id={`obs-name-${index}`}
                           value={obs.participant_name} 
-                          aria-label={`Nombre del participante ${index + 1}`}
+                          aria-label={`Nombre del tripulante ${index + 1}`}
                           onChange={(e) => handleObsChange(index, 'participant_name', e.target.value)} 
                           className="h-9 text-xs border-slate-200 focus:border-primary focus:bg-white bg-slate-50 font-medium text-slate-900" 
                           placeholder="Nombre"
@@ -97,7 +102,7 @@ export function ObservationRecordPage() {
                         <Input 
                           id={`obs-profile-${index}`}
                           value={obs.participant_profile} 
-                          aria-label={`Ocupación del participante ${index + 1}`}
+                          aria-label={`Ocupación del tripulante ${index + 1}`}
                           onChange={(e) => handleObsChange(index, 'participant_profile', e.target.value)} 
                           className="h-8 text-xs border-slate-100 text-slate-600 italic bg-transparent font-medium placeholder:text-slate-400" 
                           placeholder="Ocupación"
@@ -106,8 +111,8 @@ export function ObservationRecordPage() {
                     </td>
                     <td className="px-2 py-3">
                       <Select value={obs.task_label} onValueChange={(val) => handleObsChange(index, 'task_label', val)}>
-                        <SelectTrigger aria-label={`Tarea observación ${index + 1}`} className="h-9 w-16 mx-auto text-xs font-bold text-primary bg-primary/5 border-primary/20">
-                          <SelectValue placeholder="T#" />
+                        <SelectTrigger aria-label={`Maniobra observación ${index + 1}`} className="h-9 w-16 mx-auto text-xs font-bold text-primary bg-primary/5 border-primary/20">
+                          <SelectValue placeholder="M#" />
                         </SelectTrigger>
                         <SelectContent>
                           {data.tasks.map((task) => (
@@ -143,7 +148,7 @@ export function ObservationRecordPage() {
                       <Input 
                         id={`obs-errors-${index}`}
                         type="number" 
-                        aria-label={`Errores observación ${index + 1}`}
+                        aria-label={`Turbulencias observación ${index + 1}`}
                         value={obs.errors_count} 
                         onChange={(e) => handleObsChange(index, 'errors_count', e.target.value)} 
                         className="h-9 w-16 mx-auto text-center border-slate-200 focus:border-primary font-bold text-slate-900" 
@@ -154,7 +159,7 @@ export function ObservationRecordPage() {
                         <Input 
                           id={`obs-problem-${index}`}
                           value={obs.detected_problem} 
-                          aria-label={`Problema detectado ${index + 1}`}
+                          aria-label={`Anomalía detectada ${index + 1}`}
                           onChange={(e) => handleObsChange(index, 'detected_problem', e.target.value)} 
                           className="h-9 text-xs border-slate-200 focus:border-primary focus:bg-white bg-slate-50 font-medium text-slate-900 placeholder:text-slate-500" 
                           placeholder="¿Qué ocurrió?"
@@ -175,10 +180,30 @@ export function ObservationRecordPage() {
                           <SelectValue placeholder="Severidad" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Baja">Baja</SelectItem>
-                          <SelectItem value="Media">Media</SelectItem>
-                          <SelectItem value="Alta">Alta</SelectItem>
-                          <SelectItem value="Crítica">Crítica</SelectItem>
+                          <SelectItem value="Baja">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-green-600" />
+                              Baja
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Media">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                              Media
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Alta">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-orange-600" />
+                              Alta
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Crítica">
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full bg-red-600" />
+                              Crítica
+                            </div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </td>
@@ -198,10 +223,10 @@ export function ObservationRecordPage() {
               <div key={index} className="p-6 bg-white space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex flex-col">
-                    <span className="text-base font-bold text-slate-900">{obs.participant_name || `Participante ${index + 1}`}</span>
+                    <span className="text-base font-bold text-slate-900">{obs.participant_name || `Tripulante ${index + 1}`}</span>
                     <span className="text-xs text-slate-700 italic font-medium">{obs.participant_profile || "Sin ocupación"}</span>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="text-red-700 h-9 px-3 font-semibold bg-red-50 hover:bg-red-100 transition-colors" aria-label={`Eliminar participante ${index + 1}`}>
+                  <Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="text-red-700 h-9 px-3 font-semibold bg-red-50 hover:bg-red-100 transition-colors" aria-label={`Eliminar tripulante ${index + 1}`}>
                     <Trash2 size={18} className="mr-1" aria-hidden="true" />
                     Quitar
                   </Button>
@@ -209,15 +234,15 @@ export function ObservationRecordPage() {
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label htmlFor={`mobile-obs-task-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Tarea Asociada</label>
+                    <label htmlFor={`mobile-obs-task-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Maniobra Asociada</label>
                     <Select value={obs.task_label} onValueChange={(val) => handleObsChange(index, 'task_label', val)}>
                       <SelectTrigger id={`mobile-obs-task-${index}`} className="h-11 text-xs font-bold text-primary bg-primary/5 border-primary/20">
-                        <SelectValue placeholder="T#" />
+                        <SelectValue placeholder="M#" />
                       </SelectTrigger>
                       <SelectContent>
                         {data.tasks.map((task) => (
                           <SelectItem key={task.task_label} value={task.task_label}>
-                            Tarea {task.task_label}
+                            Maniobra {task.task_label}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -238,7 +263,7 @@ export function ObservationRecordPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor={`mobile-obs-problem-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Problema Detectado</label>
+                  <label htmlFor={`mobile-obs-problem-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Anomalía Detectada</label>
                   <Input id={`mobile-obs-problem-${index}`} value={obs.detected_problem} onChange={(e) => handleObsChange(index, 'detected_problem', e.target.value)} className="h-11 text-sm border-slate-300 font-medium text-slate-900" placeholder="¿Qué ocurrió?" />
                 </div>
               </div>
@@ -250,15 +275,15 @@ export function ObservationRecordPage() {
           <div className="p-5 rounded-2xl border border-primary/20 bg-blue-50/50 flex gap-4">
             <CheckCircle2 className="text-primary shrink-0" size={24} aria-hidden="true" />
             <div>
-              <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wide">Consejo de Observación</h3>
-              <p className="text-sm text-slate-700 mt-1.5 font-medium leading-relaxed">Busca patrones. Si tres personas fallan en lo mismo, es un hallazgo crítico de usabilidad.</p>
+              <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wide">Guía del Explorador</h3>
+              <p className="text-sm text-slate-700 mt-1.5 font-medium leading-relaxed">Busca patrones. Si tres tripulantes fallan en lo mismo, es un hallazgo crítico de usabilidad.</p>
             </div>
           </div>
           <div className="p-5 rounded-2xl border border-red-200 bg-red-50/50 flex gap-4">
             <AlertCircle className="text-red-700 shrink-0" size={24} aria-hidden="true" />
             <div>
-              <h3 className="font-bold text-red-900 text-sm uppercase tracking-wide">Métrica de Tiempo</h3>
-              <p className="text-sm text-red-900 mt-1.5 font-medium leading-relaxed">Lo más valioso no es el tiempo exacto, sino entender por qué el usuario se demora.</p>
+              <h3 className="font-bold text-red-900 text-sm uppercase tracking-wide">Cronómetro de Misión</h3>
+              <p className="text-sm text-red-900 mt-1.5 font-medium leading-relaxed">Lo más valioso no es el tiempo exacto, sino entender por qué el tripulante se demora.</p>
             </div>
           </div>
         </div>
