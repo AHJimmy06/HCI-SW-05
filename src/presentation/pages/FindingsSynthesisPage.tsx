@@ -39,7 +39,7 @@ import {
 import { NavigationButtons } from "../components/layout/NavigationButtons";
 
 export function FindingsSynthesisPage() {
-  const { data, updateFindings, addFinding, updateTestPlanId } = useTestPlan();
+  const { data, updateFindings, addFinding, updateTestPlanId, clearDraft } = useTestPlan();
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{
     type: "success" | "error" | null;
@@ -67,6 +67,8 @@ export function FindingsSynthesisPage() {
   };
 
   const handleSaveAll = async () => {
+    if (loading) return; // Bloqueo de seguridad
+
     const validPriorities: FindingDraft['priority'][] = ["Baja", "Media", "Alta"];
     const validStatuses: FindingDraft['status'][] = ["Pendiente", "En Progreso", "Resuelto"];
     setLoading(true);
@@ -151,6 +153,8 @@ export function FindingsSynthesisPage() {
 
       await findingRepo.saveAll(findingsToSave);
       if (planId) updateTestPlanId(planId);
+
+      clearDraft();
 
       setSaveStatus({
         type: "success",

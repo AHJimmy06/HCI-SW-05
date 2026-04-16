@@ -12,7 +12,7 @@ import { Edit3, Plus, Trash2, Timer, AlertCircle, CheckCircle2, Compass, ShieldA
 import { NavigationButtons } from "../components/layout/NavigationButtons";
 
 export function ObservationRecordPage() {
-  const { data, updateObservations, addObservation } = useTestPlan();
+  const { data, updateObservations, addObservation, attemptedNext } = useTestPlan();
 
   const handleObsChange = (index: number, field: string, value: string) => {
     const newObs = [...data.observations];
@@ -25,6 +25,11 @@ export function ObservationRecordPage() {
       const newObs = data.observations.filter((_, i) => i !== index);
       updateObservations(newObs);
     }
+  };
+
+  const isInvalid = (val: string | number) => {
+    if (typeof val === 'number') return attemptedNext && val <= 0;
+    return attemptedNext && (val === '' || val === null || val === undefined);
   };
 
   return (
@@ -71,10 +76,14 @@ export function ObservationRecordPage() {
             <table className="w-full text-sm text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-32">Tripulante</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-32">
+                    Tripulante <span className="text-red-500" aria-hidden="true">*</span>
+                  </th>
                   <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-16 text-center">M#</th>
                   <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-24 text-center">Éxito</th>
-                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-24 text-center">Tiempo (s)</th>
+                  <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-24 text-center">
+                    Tiempo (s) <span className="text-red-500" aria-hidden="true">*</span>
+                  </th>
                   <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-20 text-center">Turbulencias</th>
                   <th scope="col" className="px-4 py-4 font-bold text-slate-900 min-w-[200px]">Anomalía Detectada</th>
                   <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-32 text-center">
@@ -95,8 +104,10 @@ export function ObservationRecordPage() {
                           id={`obs-name-${index}`}
                           value={obs.participant_name} 
                           aria-label={`Nombre del tripulante ${index + 1}`}
+                          aria-required="true"
+                          aria-invalid={isInvalid(obs.participant_name)}
                           onChange={(e) => handleObsChange(index, 'participant_name', e.target.value)} 
-                          className="h-9 text-xs border-slate-200 focus:border-primary focus:bg-white bg-slate-50 font-medium text-slate-900" 
+                          className={`h-9 text-xs border-slate-200 focus:border-primary focus:bg-white bg-slate-50 font-medium text-slate-900 ${isInvalid(obs.participant_name) ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
                           placeholder="Nombre"
                         />
                         <Input 
@@ -139,9 +150,11 @@ export function ObservationRecordPage() {
                         id={`obs-time-${index}`}
                         type="number" 
                         aria-label={`Segundos observación ${index + 1}`}
+                        aria-required="true"
+                        aria-invalid={isInvalid(Number(obs.time_seconds))}
                         value={obs.time_seconds} 
                         onChange={(e) => handleObsChange(index, 'time_seconds', e.target.value)} 
-                        className="h-9 w-20 mx-auto text-center border-slate-200 focus:border-primary font-bold text-slate-900" 
+                        className={`h-9 w-20 mx-auto text-center border-slate-200 focus:border-primary font-bold text-slate-900 ${isInvalid(Number(obs.time_seconds)) ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
                       />
                     </td>
                     <td className="px-2 py-3">
@@ -223,7 +236,10 @@ export function ObservationRecordPage() {
               <div key={index} className="p-6 bg-white space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex flex-col">
-                    <span className="text-base font-bold text-slate-900">{obs.participant_name || `Tripulante ${index + 1}`}</span>
+                    <span className={`text-base font-bold ${isInvalid(obs.participant_name) ? 'text-red-600' : 'text-slate-900'}`}>
+                      {obs.participant_name || `Tripulante ${index + 1}`}
+                      {isInvalid(obs.participant_name) && <span className="ml-1 text-red-500">*</span>}
+                    </span>
                     <span className="text-xs text-slate-700 italic font-medium">{obs.participant_profile || "Sin ocupación"}</span>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => removeRow(index)} className="text-red-700 h-9 px-3 font-semibold bg-red-50 hover:bg-red-100 transition-colors" aria-label={`Eliminar tripulante ${index + 1}`}>
@@ -233,6 +249,39 @@ export function ObservationRecordPage() {
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5 col-span-2">
+                    <label htmlFor={`mobile-obs-name-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">
+                      Nombre Tripulante <span className="text-red-500" aria-hidden="true">*</span>
+                    </label>
+                    <Input 
+                      id={`mobile-obs-name-${index}`} 
+                      value={obs.participant_name} 
+                      aria-required="true"
+                      aria-invalid={isInvalid(obs.participant_name)}
+                      onChange={(e) => handleObsChange(index, 'participant_name', e.target.value)} 
+                      className={`h-11 text-sm border-slate-300 font-medium text-slate-900 ${isInvalid(obs.participant_name) ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                      placeholder="Nombre"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor={`mobile-obs-time-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">
+                      Tiempo (s) <span className="text-red-500" aria-hidden="true">*</span>
+                    </label>
+                    <Input 
+                      id={`mobile-obs-time-${index}`} 
+                      type="number"
+                      value={obs.time_seconds} 
+                      aria-required="true"
+                      aria-invalid={isInvalid(Number(obs.time_seconds))}
+                      onChange={(e) => handleObsChange(index, 'time_seconds', e.target.value)} 
+                      className={`h-11 text-sm border-slate-300 font-medium text-slate-900 ${isInvalid(Number(obs.time_seconds)) ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                    />
+                    {isInvalid(Number(obs.time_seconds)) && (
+                      <p className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                        <AlertCircle size={10} /> Tiempo requerido {'>'} 0
+                      </p>
+                    )}
+                  </div>
                   <div className="space-y-1.5">
                     <label htmlFor={`mobile-obs-task-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Maniobra Asociada</label>
                     <Select value={obs.task_label} onValueChange={(val) => handleObsChange(index, 'task_label', val)}>

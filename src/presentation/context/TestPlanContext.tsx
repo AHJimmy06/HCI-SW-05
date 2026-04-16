@@ -1,5 +1,6 @@
-import { createContext, useState, useMemo, type ReactNode, useCallback } from 'react';
-import type { TaskDraft, ObservationDraft, FindingDraft, FullTestData } from '../../domain/entities/types';
+import { createContext, useState, useMemo, type ReactNode, useCallback, useEffect, useRef } from 'react';
+import type { TaskDraft, ObservationDraft, FindingDraft, FullTestData, StepName, ValidationState } from '../../domain/entities/types';
+import { loadStorage, saveStorage } from '../../lib/utils';
 
 interface TestPlanContextType {
   data: FullTestData;
@@ -16,9 +17,21 @@ interface TestPlanContextType {
   addMultipleObservations: (count: number) => void;
   loadFullPlan: (plan: FullTestData) => void;
   resetData: () => void;
-  isStepComplete: (step: 'plan' | 'guia' | 'registro' | 'sintesis') => boolean;
+  isStepComplete: (step: StepName) => boolean;
   isEditing: boolean;
+  isDirty: boolean;
+  isDraftSaved: boolean;
+  lastSaved: Date | null;
+  validationStatus: Record<StepName, ValidationState>;
+  validateCurrentStep: (step: StepName) => boolean;
+  saveDraft: () => void;
+  clearDraft: () => void;
+  hasDraft: boolean;
+  attemptedNext: boolean;
+  setAttemptedNext: (val: boolean) => void;
 }
+
+const STORAGE_KEY = 'usability_test_draft';
 
 const initialData: FullTestData = {
   plan: {
@@ -37,6 +50,91 @@ export const TestPlanContext = createContext<TestPlanContextType | undefined>(un
 export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
   const [data, setData] = useState<FullTestData>(initialData);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isDraftSaved, setIsDraftSaved] = useState(true);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [attemptedNext, setAttemptedNext] = useState(false);
+  const isFirstRender = useRef(true);
+
+  // Load from LocalStorage on mount
+  useEffect(() => {
+    try {
+      const saved = loadStorage<FullTestData>(STORAGE_KEY);
+      if (saved && typeof saved === 'object') {
+        // Robustness check: Ensure it looks like a Test Plan and has mandatory arrays
+        const tasks = Array.isArray(saved.tasks) ? saved.tasks : initialData.tasks;
+        const observations = Array.isArray(saved.observations) ? saved.observations : initialData.observations;
+        const findings = Array.isArray(saved.findings) ? saved.findings : initialData.findings;
+        const plan = (saved.plan && typeof saved.plan === 'object') ? saved.plan : initialData.plan;
+
+        setData({ ...saved, plan, tasks, observations, findings });
+        setHasDraft(true);
+      }
+    } catch (error) {
+      console.error("Error loading draft from storage:", error);
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  // Save to LocalStorage with debounce
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      saveStorage(STORAGE_KEY, data);
+      setIsDraftSaved(true);
+      setLastSaved(new Date());
+    }, 2000);
+
+    setIsDraftSaved(false);
+    setIsDirty(true);
+
+    return () => clearTimeout(timer);
+  }, [data]);
+
+  const saveDraft = useCallback(() => {
+    saveStorage(STORAGE_KEY, data);
+    setIsDraftSaved(true);
+    setLastSaved(new Date());
+  }, [data]);
+
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setData(initialData);
+    setHasDraft(false);
+    setIsDirty(false);
+  }, []);
+
+  const validationStatus = useMemo<Record<StepName, ValidationState>>(() => {
+    // 1. Plan: Sólo requiere Nombre del Producto (BD) y Objetivo (Lógica)
+    const planValid = data.plan.product_name.trim() !== '' && 
+                     data.plan.objective.trim() !== '';
+    
+    // 2. Guía: Requiere que existan tareas y que al menos una tenga un escenario
+    const guideValid = data.tasks.length > 0 && data.tasks.some(t => t.scenario.trim() !== '');
+    
+    // 3. Registro: Requiere al menos una observación con participante y tiempo válido
+    const recordValid = data.observations.length > 0 && 
+                       data.observations.some(o => o.participant_name.trim() !== '' && o.time_seconds !== '' && Number(o.time_seconds) > 0);
+    
+    // 4. Síntesis: Requiere al menos un hallazgo con problema definido
+    const synthesisValid = data.findings.length > 0 && data.findings.some(f => f.problem.trim() !== '');
+
+    return {
+      plan: { isValid: planValid, errors: planValid ? [] : ['Define el nombre del producto y el objetivo de la misión'] },
+      guide: { isValid: guideValid, errors: guideValid ? [] : ['Debes definir al menos un escenario de tarea'] },
+      record: { isValid: recordValid, errors: recordValid ? [] : ['Registra al menos un participante con su tiempo'] },
+      synthesis: { isValid: synthesisValid, errors: synthesisValid ? [] : ['Debes registrar al menos un hallazgo'] },
+    };
+  }, [data]);
+
+  const validateCurrentStep = useCallback((step: StepName): boolean => {
+    return validationStatus[step]?.isValid || false;
+  }, [validationStatus]);
 
   const updatePlan = useCallback((field: keyof FullTestData['plan'], value: string) => {
     setData(prev => ({ ...prev, plan: { ...prev.plan, [field]: value } }));
@@ -108,52 +206,36 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
   const loadFullPlan = useCallback((planData: FullTestData) => {
     setData(planData);
     setIsEditing(true);
+    setIsDirty(false);
   }, []);
 
   const resetData = useCallback(() => {
     setData(initialData);
     setIsEditing(false);
+    setIsDirty(false);
+    localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  const checkStepComplete = useCallback((step: 'plan' | 'guia' | 'registro' | 'sintesis', currentData: FullTestData, editing: boolean): boolean => {
-    if (editing) return true;
-    
-    const isPlanComplete = currentData.plan.product_name.trim() !== '' && 
-                          currentData.plan.objective.trim() !== '' && 
-                          currentData.tasks.some(t => (t.scenario || '').trim() !== '');
-    
-    switch (step) {
-      case 'plan':
-        return isPlanComplete;
-      case 'guia': 
-        return isPlanComplete;
-      case 'registro': 
-        return isPlanComplete && currentData.observations.some(o => (o.participant_name || '').trim() !== '');
-      case 'sintesis': 
-        return isPlanComplete && 
-               currentData.observations.some(o => (o.participant_name || '').trim() !== '') && 
-               currentData.findings.some(f => (f.problem || '').trim() !== '');
-      default: 
-        return false;
-    }
-  }, []);
-
-  const isStepComplete = useCallback((step: 'plan' | 'guia' | 'registro' | 'sintesis'): boolean => {
-    return checkStepComplete(step, data, isEditing);
-  }, [data, isEditing, checkStepComplete]);
+  const isStepComplete = useCallback((step: StepName): boolean => {
+    return validationStatus[step]?.isValid || false;
+  }, [validationStatus]);
 
   const value = useMemo(() => ({
     data, updatePlan, updateTasks, addTask, deleteTask,
     updateObservations, addObservation, 
     updateFindings, addFinding, updateTestPlanId,
     addMultipleTasks, addMultipleObservations, resetData,
-    loadFullPlan, isStepComplete, isEditing
+    loadFullPlan, isStepComplete, isEditing,
+    isDirty, isDraftSaved, lastSaved, validationStatus, validateCurrentStep, saveDraft, attemptedNext, setAttemptedNext,
+    hasDraft, clearDraft
   }), [
     data, updatePlan, updateTasks, addTask, deleteTask,
     updateObservations, addObservation, 
     updateFindings, addFinding, updateTestPlanId,
     addMultipleTasks, addMultipleObservations, resetData,
-    loadFullPlan, isStepComplete, isEditing
+    loadFullPlan, isStepComplete, isEditing,
+    isDirty, isDraftSaved, lastSaved, validationStatus, validateCurrentStep, saveDraft, attemptedNext,
+    hasDraft, clearDraft
   ]);
 
   return (

@@ -4,13 +4,15 @@ import { BookOpen, MessageSquare, CheckCircle2, AlertCircle, HelpCircle, ArrowRi
 import { NavigationButtons } from "../components/layout/NavigationButtons";
 
 export function ModeratorGuidePage() {
-  const { data, updateTasks, updatePlan } = useTestPlan();
+  const { data, updateTasks, updatePlan, attemptedNext } = useTestPlan();
 
   const handleTaskChange = (index: number, field: string, value: string) => {
     const newTasks = [...data.tasks];
     newTasks[index] = { ...newTasks[index], [field]: value };
     updateTasks(newTasks);
   };
+
+  const isInvalid = (val: string) => attemptedNext && val.trim() === '';
 
   return (
     <div className="flex flex-col min-h-full">
@@ -84,30 +86,49 @@ export function ModeratorGuidePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {data.tasks.map((task, index) => (
-                    <tr key={index} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-4 font-bold text-primary bg-primary/5 text-center">{task.task_label}</td>
-                      <td className="px-4 py-4 text-slate-900 leading-relaxed italic font-semibold">
-                        {task.scenario || <span className="text-slate-500 italic font-medium">Sin escenario definido.</span>}
-                      </td>
-                      <td className="px-2 py-4">
-                        <Input 
-                          id={`followup-${index}`}
-                          value={task.follow_up_question || ''}
-                          aria-label={`Consulta de seguimiento para tarea ${task.task_label}`}
-                          onChange={(e) => handleTaskChange(index, 'follow_up_question', e.target.value)}
-                          className="bg-white border-slate-300 focus:border-primary font-medium text-slate-900 placeholder:text-slate-400" 
-                          placeholder="¿Qué esperabas encontrar...?"
-                        />
-                      </td>
-                      <td className="px-4 py-4 text-slate-700 text-xs font-semibold">
-                        <div className="flex items-start gap-1">
-                          <CheckCircle2 size={14} className="mt-0.5 text-primary shrink-0" aria-hidden="true" />
-                          <span>{task.success_criteria || "Sin criterio"}</span>
-                        </div>
+                  {Array.isArray(data.tasks) && data.tasks.length > 0 ? (
+                    data.tasks.map((task, index) => (
+                      <tr key={index} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-4 font-bold text-primary bg-primary/5 text-center">{task.task_label}</td>
+                        <td className={`px-4 py-4 text-slate-900 leading-relaxed italic font-semibold ${isInvalid(task.scenario) ? 'bg-red-50 border-x-2 border-red-200' : ''}`}>
+                          {task.scenario ? (
+                            task.scenario
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-slate-500 italic font-medium">Sin escenario definido.</span>
+                              {attemptedNext && (
+                                <span className="text-[10px] text-red-600 font-bold flex items-center gap-1 uppercase not-italic">
+                                  <AlertCircle size={10} /> Escenario requerido en el plan
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-2 py-4">
+                          <Input 
+                            id={`followup-${index}`}
+                            value={task.follow_up_question || ''}
+                            aria-label={`Consulta de seguimiento para tarea ${task.task_label}`}
+                            onChange={(e) => handleTaskChange(index, 'follow_up_question', e.target.value)}
+                            className="bg-white border-slate-300 focus:border-primary font-medium text-slate-900 placeholder:text-slate-400" 
+                            placeholder="¿Qué esperabas encontrar...?"
+                          />
+                        </td>
+                        <td className="px-4 py-4 text-slate-700 text-xs font-semibold">
+                          <div className="flex items-start gap-1">
+                            <CheckCircle2 size={14} className="mt-0.5 text-primary shrink-0" aria-hidden="true" />
+                            <span>{task.success_criteria || "Sin criterio"}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-slate-500 font-medium italic">
+                        No hay tareas definidas en el plan. Por favor, regresa al paso anterior.
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
@@ -119,9 +140,16 @@ export function ModeratorGuidePage() {
                     <span className="px-3 py-1 bg-primary text-white font-bold rounded-lg text-xs uppercase tracking-wider">Tarea {task.task_label}</span>
                   </div>
                   <div className="space-y-3">
-                    <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-300 shadow-inner">
+                    <div className={`p-4 rounded-xl border border-dashed shadow-inner ${isInvalid(task.scenario) ? 'bg-red-50 border-red-400' : 'bg-slate-50 border-slate-300'}`}>
                       <span className="text-xs font-bold text-slate-600 uppercase tracking-widest block mb-1.5">Guion Tripulante</span>
-                      <p className="text-sm italic text-slate-900 leading-relaxed font-semibold">{task.scenario || "Sin escenario definido."}</p>
+                      <p className={`text-sm italic leading-relaxed font-semibold ${isInvalid(task.scenario) ? 'text-red-900' : 'text-slate-900'}`}>
+                        {task.scenario || "Sin escenario definido."}
+                      </p>
+                      {isInvalid(task.scenario) && (
+                        <span className="text-[10px] text-red-600 font-bold flex items-center gap-1 uppercase not-italic mt-2">
+                          <AlertCircle size={10} /> Requerido en el plan
+                        </span>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       <label htmlFor={`mobile-followup-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-widest block">Consulta de Seguimiento</label>

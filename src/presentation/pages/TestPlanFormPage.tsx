@@ -5,7 +5,7 @@ import { Plus, Trash2, Info, ClipboardList, Users, Settings } from "lucide-react
 import { NavigationButtons } from "../components/layout/NavigationButtons";
 
 export function TestPlanFormPage() {
-  const { data, updatePlan, updateTasks, addTask, deleteTask } = useTestPlan();
+  const { data, updatePlan, updateTasks, addTask, deleteTask, attemptedNext } = useTestPlan();
 
   const handleTaskChange = (index: number, field: string, value: string) => {
     const newTasks = [...data.tasks];
@@ -16,6 +16,8 @@ export function TestPlanFormPage() {
   const removeRow = (index: number) => {
     deleteTask(index);
   };
+
+  const isInvalid = (val: string) => attemptedNext && val.trim() === '';
 
   return (
     <div className="flex flex-col min-h-full">
@@ -50,14 +52,23 @@ export function TestPlanFormPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="space-y-2">
-              <label htmlFor="product_name" className="text-sm font-semibold text-slate-800 block">Producto / Nave</label>
+              <label htmlFor="product_name" className="text-sm font-semibold text-slate-800 block">
+                Producto / Nave <span className="text-red-500" aria-hidden="true">*</span>
+              </label>
               <Input 
                 id="product_name"
                 value={data.plan.product_name}
                 onChange={(e) => updatePlan('product_name', e.target.value)}
-                className="bg-white border-slate-300 focus:border-primary focus:ring-primary/20" 
+                aria-required="true"
+                aria-invalid={isInvalid(data.plan.product_name)}
+                className={`bg-white border-slate-300 focus:border-primary focus:ring-primary/20 ${isInvalid(data.plan.product_name) ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
                 placeholder="Ej. Aplicación de Banca Móvil" 
               />
+              {isInvalid(data.plan.product_name) && (
+                <p className="text-xs font-bold text-red-600 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle size={12} /> Este campo es obligatorio
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <label htmlFor="module_name" className="text-sm font-semibold text-slate-800 block">Módulo / Compartimento</label>
@@ -70,14 +81,23 @@ export function TestPlanFormPage() {
               />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <label htmlFor="objective" className="text-sm font-semibold text-slate-800 block">Objetivo de la Misión</label>
+              <label htmlFor="objective" className="text-sm font-semibold text-slate-800 block">
+                Objetivo de la Misión <span className="text-red-500" aria-hidden="true">*</span>
+              </label>
               <Input 
                 id="objective"
                 value={data.plan.objective}
                 onChange={(e) => updatePlan('objective', e.target.value)}
-                className="bg-white border-slate-300 focus:border-primary focus:ring-primary/20" 
+                aria-required="true"
+                aria-invalid={isInvalid(data.plan.objective)}
+                className={`bg-white border-slate-300 focus:border-primary focus:ring-primary/20 ${isInvalid(data.plan.objective) ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
                 placeholder="Ej. Evaluar la facilidad para agregar un nuevo beneficiario" 
               />
+              {isInvalid(data.plan.objective) && (
+                <p className="text-xs font-bold text-red-600 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle size={12} /> Este campo es obligatorio
+                </p>
+              )}
             </div>
             <div className="md:col-span-2 space-y-2">
               <label htmlFor="user_profile" className="text-sm font-semibold text-slate-800 block">Perfil de la Tripulación (Usuario)</label>
@@ -149,7 +169,9 @@ export function TestPlanFormPage() {
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
                     <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-16">ID</th>
-                    <th scope="col" className="px-4 py-4 font-bold text-slate-900">Escenario de Misión</th>
+                    <th scope="col" className="px-4 py-4 font-bold text-slate-900">
+                      Escenario de Misión <span className="text-red-500" aria-hidden="true">*</span>
+                    </th>
                     <th scope="col" className="px-4 py-4 font-bold text-slate-900">Objetivo Esperado</th>
                     <th scope="col" className="px-4 py-4 font-bold text-slate-900 w-14 text-center">Acción</th>
                   </tr>
@@ -163,8 +185,10 @@ export function TestPlanFormPage() {
                           id={`task-scenario-${index}`}
                           value={task.scenario}
                           aria-label={`Escenario para tarea ${task.task_label}`}
+                          aria-required="true"
+                          aria-invalid={isInvalid(task.scenario)}
                           onChange={(e) => handleTaskChange(index, 'scenario', e.target.value)}
-                          className="border-slate-200 focus:border-primary focus:bg-white bg-slate-50 h-9 text-xs font-medium text-slate-900" 
+                          className={`border-slate-200 focus:border-primary focus:bg-white bg-slate-50 h-9 text-xs font-medium text-slate-900 ${isInvalid(task.scenario) ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
                         />
                       </td>
                       <td className="px-2 py-2">
@@ -205,8 +229,22 @@ export function TestPlanFormPage() {
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-1.5">
-                      <label htmlFor={`mobile-scenario-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-wider">Escenario de Misión</label>
-                      <Input id={`mobile-scenario-${index}`} value={task.scenario} onChange={(e) => handleTaskChange(index, 'scenario', e.target.value)} className="h-11 text-sm border-slate-300 font-medium text-slate-900" />
+                      <label htmlFor={`mobile-scenario-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Escenario de Misión <span className="text-red-500" aria-hidden="true">*</span>
+                      </label>
+                      <Input 
+                        id={`mobile-scenario-${index}`} 
+                        value={task.scenario} 
+                        aria-required="true"
+                        aria-invalid={isInvalid(task.scenario)}
+                        onChange={(e) => handleTaskChange(index, 'scenario', e.target.value)} 
+                        className={`h-11 text-sm border-slate-300 font-medium text-slate-900 ${isInvalid(task.scenario) ? 'border-red-500 ring-1 ring-red-500' : ''}`} 
+                      />
+                      {isInvalid(task.scenario) && (
+                        <p className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                          <AlertCircle size={10} /> Escenario obligatorio
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       <label htmlFor={`mobile-result-${index}`} className="text-xs font-bold text-slate-700 uppercase tracking-wider">Objetivo Esperado</label>

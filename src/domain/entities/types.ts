@@ -124,3 +124,10 @@ export interface FullTestData {
   observations: ObservationDraft[];
   findings: FindingDraft[];
 }
+
+export type StepName = 'plan' | 'guide' | 'record' | 'synthesis';
+
+export interface ValidationState {
+  isValid: boolean;
+  errors: string[];
+}
