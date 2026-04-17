@@ -82,13 +82,12 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
 
 export class SupabaseParticipantRepository implements IParticipantRepository {
   async saveAll(participants: Partial<Participant>[]): Promise<Participant[]> {
-    if (participants.length > 0 && participants[0].test_plan_id) {
-      await supabase.from('participants').delete().eq('test_plan_id', participants[0].test_plan_id);
-    }
+    if (participants.length === 0) return [];
 
+    // Usamos upsert basado en el constraint (test_plan_id, name)
     const { data, error } = await supabase
       .from('participants')
-      .insert(participants)
+      .upsert(participants, { onConflict: 'test_plan_id, name' })
       .select();
 
     if (error) throw new Error(error.message);
@@ -108,13 +107,12 @@ export class SupabaseParticipantRepository implements IParticipantRepository {
 
 export class SupabaseTaskRepository implements ITaskRepository {
   async saveAll(tasks: Partial<Task>[]): Promise<void> {
-    if (tasks.length > 0 && tasks[0].test_plan_id) {
-      await supabase.from('tasks').delete().eq('test_plan_id', tasks[0].test_plan_id);
-    }
+    if (tasks.length === 0) return;
 
+    // Usamos upsert basado en el constraint (test_plan_id, task_label)
     const { error } = await supabase
       .from('tasks')
-      .insert(tasks);
+      .upsert(tasks, { onConflict: 'test_plan_id, task_label' });
 
     if (error) throw new Error(error.message);
   }
@@ -141,7 +139,12 @@ export class SupabaseObservationRepository implements IObservationRepository {
   }
 
   async saveAll(observations: Partial<Observation>[]): Promise<void> {
-    if (observations.length > 0 && observations[0].test_plan_id) {
+    if (observations.length === 0) return;
+    
+    // Las observaciones no tienen constraint de unicidad natural (pueden haber varias para el mismo par task/part).
+    // Por seguridad, para el flujo de guardado completo, borramos e insertamos pero con una sola transacción lógica.
+    // Al ser un flujo secuencial, el bloqueo en el UI evitará la concurrencia.
+    if (observations[0].test_plan_id) {
       await supabase.from('observations').delete().eq('test_plan_id', observations[0].test_plan_id);
     }
     
@@ -173,7 +176,10 @@ export class SupabaseFindingRepository implements IFindingRepository {
   }
 
   async saveAll(findings: Partial<Finding>[]): Promise<void> {
-    if (findings.length > 0 && findings[0].test_plan_id) {
+    if (findings.length === 0) return;
+
+    // Los hallazgos se borran y re-crean para simplificar el flujo de edición.
+    if (findings[0].test_plan_id) {
       await supabase.from('findings').delete().eq('test_plan_id', findings[0].test_plan_id);
     }
 
