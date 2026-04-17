@@ -26,7 +26,6 @@ import {
   Plus,
   Trash2,
   Save,
-  ArrowRight,
   Loader2,
   AlertTriangle,
   CheckCircle2,

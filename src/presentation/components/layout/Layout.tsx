@@ -11,15 +11,13 @@ import {
   Filter,
   Save,
   Clock,
-  X,
   LogOut,
   User as UserIcon
 } from "lucide-react";
 import { NavigationStepper } from "./NavigationStepper";
-import { Button } from "@/components/ui/button";
 
 function NavContent() {
-  const { isStepComplete, isDraftSaved, lastSaved, hasDraft, clearDraft, validationStatus } = useTestPlan();
+  const { isDraftSaved, hasDraft, clearDraft, validationStatus } = useTestPlan();
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();

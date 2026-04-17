@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useTestPlan } from "../context/useTestPlan";
-import { Edit3, Plus, Trash2, Timer, AlertCircle, CheckCircle2, Compass, ShieldAlert } from "lucide-react";
+import { Edit3, Plus, Trash2, Timer, AlertCircle, CheckCircle2, Compass } from "lucide-react";
 import { NavigationButtons } from "../components/layout/NavigationButtons";
 
 export function ObservationRecordPage() {
@@ -279,9 +279,9 @@ export function ObservationRecordPage() {
               <div key={index} className="p-6 bg-white space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex flex-col">
-                    <span className={`text-base font-bold ${isInvalid(obs.participant_name) ? 'text-red-600' : 'text-slate-900'}`}>
+                    <span className={`text-base font-bold ${isInvalid(`m-name-${index}`, obs.participant_name) ? 'text-red-600' : 'text-slate-900'}`}>
                       {obs.participant_name || `Participante ${index + 1}`}
-                      {isInvalid(obs.participant_name) && <span className="ml-1 text-red-500">*</span>}
+                      {isInvalid(`m-name-${index}`, obs.participant_name) && <span className="ml-1 text-red-500">*</span>}
                     </span>
                     <span className="text-xs text-slate-700 italic font-medium">{obs.participant_profile || "Sin perfil definido"}</span>
                   </div>

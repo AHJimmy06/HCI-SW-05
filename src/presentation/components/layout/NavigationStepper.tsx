@@ -5,8 +5,7 @@ import {
   BookOpen, 
   Edit3, 
   Filter,
-  CheckCircle2,
-  Circle
+  CheckCircle2
 } from 'lucide-react';
 import type { StepName } from '../../../domain/entities/types';
 
@@ -56,24 +55,18 @@ export function NavigationStepper() {
         {/* Progress Line Background */}
         <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -translate-y-1/2 z-0" />
         
-        {steps.map((step, index) => {
+        {steps.map((step) => {
           const Icon = step.icon;
           const status = validationStatus[step.id];
           const isActive = currentStep === step.id;
           const isCompleted = status.isValid;
-          const isPending = !isCompleted && !isActive;
 
           let colorClass = "text-slate-400 bg-slate-50 border-slate-200";
-          let iconColorClass = "text-slate-400";
-          let lineClass = "bg-slate-100";
 
           if (isActive) {
             colorClass = "text-primary bg-primary/10 border-primary ring-4 ring-primary/10";
-            iconColorClass = "text-primary";
           } else if (isCompleted) {
             colorClass = "text-emerald-600 bg-emerald-50 border-emerald-200";
-            iconColorClass = "text-emerald-600";
-            lineClass = "bg-emerald-500";
           }
 
           return (

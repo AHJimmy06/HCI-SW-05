@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useTestPlan } from "../context/useTestPlan";
 import { 
   BookOpen, MessageSquare, CheckCircle2, AlertCircle, 
-  HelpCircle, ArrowRightCircle, Settings, Save, Loader2,
-  ChevronLeft, ChevronRight, X, Clock
+  ArrowRightCircle, Save, Loader2,
+  ChevronLeft, ChevronRight, X
 } from "lucide-react";
 import { SupabaseTestPlanRepository, SupabaseTaskRepository } from "../../infrastructure/repositories/SupabaseRepositories";
 

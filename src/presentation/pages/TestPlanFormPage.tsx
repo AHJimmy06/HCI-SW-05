@@ -4,13 +4,12 @@ import { Button } from "@/components/ui/button";
 import { useTestPlan } from "../context/useTestPlan";
 import { 
   Plus, Trash2, Info, ClipboardList, Users, Settings, 
-  AlertCircle, Link as LinkIcon, Clock, Save, Loader2, CheckCircle2 
+  Clock 
 } from "lucide-react";
 import { NavigationButtons } from "../components/layout/NavigationButtons";
-import { SupabaseTestPlanRepository, SupabaseTaskRepository } from "../../infrastructure/repositories/SupabaseRepositories";
 
 export function TestPlanFormPage() {
-  const { data, updatePlan, updateTasks, addTask, deleteTask, attemptedNext, validationStatus } = useTestPlan();
+  const { data, updatePlan, updateTasks, addTask, deleteTask, attemptedNext } = useTestPlan();
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const handleTaskChange = (index: number, field: string, value: string) => {

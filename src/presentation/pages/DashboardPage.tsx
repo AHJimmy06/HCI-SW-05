@@ -1,18 +1,18 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { SupabaseTestPlanRepository } from "../../infrastructure/repositories/SupabaseRepositories";
-import type { DashboardMetrics, FullTestPlan, Task, Observation, Finding, Participant } from "../../domain/entities/types";
+import type { DashboardMetrics, FullTestPlan, Task, Observation, Finding, Participant, FullTestData, ObservationDraft, FindingDraft } from "../../domain/entities/types";
 import { useTestPlan } from "../context/useTestPlan";
 import { Button } from "@/components/ui/button";
 import { 
   LayoutDashboard, TrendingUp, Clock, AlertOctagon, Users, 
   FileBarChart, Loader2,
   ChevronUp, ClipboardList, FileText,
-  Edit, Eye, Plus, Trash2, AlertTriangle, Download, Info,
+  Edit, Eye, Plus, Trash2, AlertTriangle, Download,
   Search, Briefcase, CheckCircle2, X, ArrowRight
 } from "lucide-react";
 import jsPDF from "jspdf";
-import autoTable, { type UserOptions } from "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -179,7 +179,7 @@ export function DashboardPage() {
       ],
       theme: 'striped',
       styles: { fontSize: 9, cellPadding: 3 },
-      columnStyles: { 0: { fontStyle: 'bold', width: 50 } }
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } }
     });
 
     // --- 3. MATRIZ DE HALLAZGOS (EL ORO ACCIONABLE) ---
@@ -205,10 +205,10 @@ export function DashboardPage() {
         headStyles: { fillColor: [15, 23, 42], fontSize: 10 },
         styles: { fontSize: 8, cellPadding: 3 },
         columnStyles: { 
-          0: { width: 45 },
-          1: { width: 25 },
-          2: { width: 25 },
-          3: { width: 85 }
+          0: { cellWidth: 45 },
+          1: { cellWidth: 25 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 85 }
         }
       });
     }
@@ -236,7 +236,7 @@ export function DashboardPage() {
     });
 
     // --- PIE DE PÁGINA ---
-    const pageCount = doc.internal.getNumberOfPages();
+    const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
@@ -253,7 +253,7 @@ export function DashboardPage() {
       const repo = new SupabaseTestPlanRepository();
       const details = await repo.getFullPlan(planId);
       
-      const mappedData = {
+      const mappedData: FullTestData = {
         test_plan_id: planId,
         plan: {
           product_name: details.product_name || '',
@@ -282,7 +282,7 @@ export function DashboardPage() {
           follow_up_question: t.follow_up_question || ''
         })),
         observations: details.observations && details.observations.length > 0 
-          ? details.observations.map((o: Observation & { participants?: Participant; tasks?: Task }) => ({
+          ? details.observations.map((o: Observation & { participants?: Participant; tasks?: Task }): ObservationDraft => ({
               participant_name: o.participants?.name || '',
               participant_profile: o.participants?.profile || '',
               task_label: o.tasks?.task_label || '',
@@ -294,7 +294,7 @@ export function DashboardPage() {
               severity: o.severity || 'Baja',
               proposed_improvement: o.proposed_improvement || ''
             }))
-          : [{
+          : ([{
               participant_name: '',
               participant_profile: '',
               task_label: (details.tasks && details.tasks.length > 0) ? details.tasks[0].task_label : '',
@@ -305,9 +305,9 @@ export function DashboardPage() {
               detected_problem: '',
               severity: 'Baja',
               proposed_improvement: ''
-            }],
+            }] as ObservationDraft[]),
         findings: details.findings && details.findings.length > 0 
-          ? details.findings.map((f: Finding) => ({
+          ? details.findings.map((f: Finding): FindingDraft => ({
               problem: f.problem || '',
               evidence: f.evidence || '',
               frequency: f.frequency || '',
@@ -316,7 +316,7 @@ export function DashboardPage() {
               priority: f.priority || 'Media',
               status: f.status || 'Pendiente'
             }))
-          : [{
+          : ([{
               problem: '',
               evidence: '',
               frequency: '',
@@ -324,7 +324,7 @@ export function DashboardPage() {
               recommendation: '',
               priority: 'Media',
               status: 'Pendiente'
-            }]
+            }] as FindingDraft[])
       };
       
       loadFullPlan(mappedData);
