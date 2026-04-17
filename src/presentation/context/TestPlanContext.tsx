@@ -1,5 +1,6 @@
-import { createContext, useState, useMemo, type ReactNode, useCallback } from 'react';
-import type { TaskDraft, ObservationDraft, FindingDraft, FullTestData } from '../../domain/entities/types';
+import { createContext, useState, useMemo, type ReactNode, useCallback, useEffect, useRef } from 'react';
+import type { TaskDraft, ObservationDraft, FindingDraft, FullTestData, StepName, ValidationState } from '../../domain/entities/types';
+import { loadStorage, saveStorage } from '../../lib/utils';
 
 interface TestPlanContextType {
   data: FullTestData;
@@ -16,20 +17,37 @@ interface TestPlanContextType {
   addMultipleObservations: (count: number) => void;
   loadFullPlan: (plan: FullTestData) => void;
   resetData: () => void;
-  isStepComplete: (step: 'plan' | 'guia' | 'registro' | 'sintesis') => boolean;
+  isStepComplete: (step: StepName) => boolean;
   isEditing: boolean;
+  isDirty: boolean;
+  isDraftSaved: boolean;
+  lastSaved: Date | null;
+  validationStatus: Record<StepName, ValidationState>;
+  validateCurrentStep: (step: StepName) => boolean;
+  saveDraft: () => void;
+  clearDraft: () => void;
+  hasDraft: boolean;
+  attemptedNext: boolean;
+  setAttemptedNext: (val: boolean) => void;
 }
+
+const STORAGE_KEY = 'usability_test_draft';
 
 const initialData: FullTestData = {
   plan: {
     product_name: '', module_name: '', objective: '', user_profile: '',
-    method: '', test_date: '', place_channel: '', moderator_name: '',
+    method: '',
+    test_date: '',
+    duration: '',
+    place_channel: '', 
+    link_file: '',
+    moderator_name: '',
     observer_name: '', tool_prototype: '', admin_notes: '',
     closing_easy: '', closing_confusing: '', closing_change: '',
   },
   tasks: [{ task_label: 'T1', scenario: '', expected_result: '', main_metric: '', success_criteria: '', follow_up_question: '' }],
   observations: [{ participant_name: '', participant_profile: '', task_label: '', success: 'Si', time_seconds: '', errors_count: '', key_comments: '', detected_problem: '', severity: 'Baja', proposed_improvement: '' }],
-  findings: [{ problem: '', evidence: '', frequency: '', severity: '', recommendation: '', priority: 'Media', status: 'Pendiente' }],
+  findings: [{ problem: '', evidence: '', frequency: '', severity: 'Baja', recommendation: '', priority: 'Media', status: 'Pendiente' }],
 };
 
 export const TestPlanContext = createContext<TestPlanContextType | undefined>(undefined);
@@ -37,6 +55,134 @@ export const TestPlanContext = createContext<TestPlanContextType | undefined>(un
 export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
   const [data, setData] = useState<FullTestData>(initialData);
   const [isEditing, setIsEditing] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isDraftSaved, setIsDraftSaved] = useState(true);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [hasDraft, setHasDraft] = useState(false);
+  const [attemptedNext, setAttemptedNext] = useState(false);
+  const isFirstRender = useRef(true);
+
+  // Load from LocalStorage on mount
+  useEffect(() => {
+    try {
+      const saved = loadStorage<FullTestData>(STORAGE_KEY);
+      if (saved && typeof saved === 'object') {
+        // Robustness check: Ensure it looks like a Test Plan and has mandatory arrays
+        const tasks = Array.isArray(saved.tasks) ? saved.tasks : initialData.tasks;
+        const observations = Array.isArray(saved.observations) ? saved.observations : initialData.observations;
+        const findings = Array.isArray(saved.findings) ? saved.findings : initialData.findings;
+        const plan = (saved.plan && typeof saved.plan === 'object') ? saved.plan : initialData.plan;
+
+        setData({ ...saved, plan, tasks, observations, findings });
+        setHasDraft(true);
+      }
+    } catch (error) {
+      console.error("Error loading draft from storage:", error);
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  // Save to LocalStorage with debounce
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      saveStorage(STORAGE_KEY, data);
+      setIsDraftSaved(true);
+      setLastSaved(new Date());
+    }, 2000);
+
+    setIsDraftSaved(false);
+    setIsDirty(true);
+
+    return () => clearTimeout(timer);
+  }, [data]);
+
+  const saveDraft = useCallback(() => {
+    saveStorage(STORAGE_KEY, data);
+    setIsDraftSaved(true);
+    setLastSaved(new Date());
+  }, [data]);
+
+  const clearDraft = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    setData(initialData);
+    setHasDraft(false);
+    setIsDirty(false);
+  }, []);
+
+  const validationStatus = useMemo<Record<StepName, ValidationState>>(() => {
+    // 1. Plan: Requiere casi todo (Cimientos sólidos)
+    const p = data.plan;
+    const planValid = (p?.product_name || '').trim() !== '' && 
+                     (p?.module_name || '').trim() !== '' &&
+                     (p?.objective || '').trim() !== '' &&
+                     (p?.user_profile || '').trim() !== '' &&
+                     (p?.method || '').trim() !== '' &&
+                     (p?.moderator_name || '').trim() !== '' &&
+                     (p?.observer_name || '').trim() !== '' &&
+                     (p?.tool_prototype || '').trim() !== '' &&
+                     (p?.place_channel || '').trim() !== '';
+    
+    // 2. Guía: Requiere tareas completas Y guion de entrevista definido
+    const g = data.plan;
+    const guideValid = Array.isArray(data.tasks) && 
+                       data.tasks.length > 0 && 
+                       data.tasks.every(t => 
+                         (t?.scenario || '').trim() !== '' &&
+                         (t?.follow_up_question || '').trim() !== ''
+                       ) &&
+                       (g?.closing_easy || '').trim() !== '' &&
+                       (g?.closing_confusing || '').trim() !== '' &&
+                       (g?.closing_change || '').trim() !== '';
+    
+    // 3. Registro: Todos los campos son obligatorios
+    const recordValid = Array.isArray(data.observations) && 
+                       data.observations.length > 0 && 
+                       data.observations.every(o => 
+                         (o?.participant_name || '').trim() !== '' && 
+                         (o?.participant_profile || '').trim() !== '' && 
+                         (o?.task_label || '').trim() !== '' && 
+                         o?.time_seconds !== '' && 
+                         !isNaN(Number(o?.time_seconds)) &&
+                         Number(o?.time_seconds) > 0 &&
+                         (o?.key_comments || '').trim() !== '' &&
+                         (o?.detected_problem || '').trim() !== '' &&
+                         (o?.severity || '').trim() !== '' &&
+                         (o?.proposed_improvement || '').trim() !== ''
+                       );
+    
+    // 4. Síntesis: Requiere al menos un hallazgo con problema definido
+    const synthesisValid = Array.isArray(data.findings) && 
+                          data.findings.length > 0 && 
+                          data.findings.some(f => (f?.problem || '').trim() !== '');
+
+    return {
+      plan: { 
+        isValid: planValid, 
+        errors: planValid ? [] : ['Completa todos los campos obligatorios de contexto y logística.'] 
+      },
+      guide: { 
+        isValid: guideValid, 
+        errors: guideValid ? [] : ['Debes definir al menos un escenario de tarea en el plan.'] 
+      },
+      record: { 
+        isValid: recordValid, 
+        errors: recordValid ? [] : ['Registra al menos un participante con un tiempo de ejecución válido.'] 
+      },
+      synthesis: { 
+        isValid: synthesisValid, 
+        errors: synthesisValid ? [] : ['Debes registrar al menos un hallazgo para cerrar la misión.'] 
+      },
+    };
+  }, [data]);
+
+  const validateCurrentStep = useCallback((step: StepName): boolean => {
+    return validationStatus[step]?.isValid || false;
+  }, [validationStatus]);
 
   const updatePlan = useCallback((field: keyof FullTestData['plan'], value: string) => {
     setData(prev => ({ ...prev, plan: { ...prev.plan, [field]: value } }));
@@ -108,52 +254,36 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
   const loadFullPlan = useCallback((planData: FullTestData) => {
     setData(planData);
     setIsEditing(true);
+    setIsDirty(false);
   }, []);
 
   const resetData = useCallback(() => {
     setData(initialData);
     setIsEditing(false);
+    setIsDirty(false);
+    localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  const checkStepComplete = useCallback((step: 'plan' | 'guia' | 'registro' | 'sintesis', currentData: FullTestData, editing: boolean): boolean => {
-    if (editing) return true;
-    
-    const isPlanComplete = currentData.plan.product_name.trim() !== '' && 
-                          currentData.plan.objective.trim() !== '' && 
-                          currentData.tasks.some(t => (t.scenario || '').trim() !== '');
-    
-    switch (step) {
-      case 'plan':
-        return isPlanComplete;
-      case 'guia': 
-        return isPlanComplete;
-      case 'registro': 
-        return isPlanComplete && currentData.observations.some(o => (o.participant_name || '').trim() !== '');
-      case 'sintesis': 
-        return isPlanComplete && 
-               currentData.observations.some(o => (o.participant_name || '').trim() !== '') && 
-               currentData.findings.some(f => (f.problem || '').trim() !== '');
-      default: 
-        return false;
-    }
-  }, []);
-
-  const isStepComplete = useCallback((step: 'plan' | 'guia' | 'registro' | 'sintesis'): boolean => {
-    return checkStepComplete(step, data, isEditing);
-  }, [data, isEditing, checkStepComplete]);
+  const isStepComplete = useCallback((step: StepName): boolean => {
+    return validationStatus[step]?.isValid || false;
+  }, [validationStatus]);
 
   const value = useMemo(() => ({
     data, updatePlan, updateTasks, addTask, deleteTask,
     updateObservations, addObservation, 
     updateFindings, addFinding, updateTestPlanId,
     addMultipleTasks, addMultipleObservations, resetData,
-    loadFullPlan, isStepComplete, isEditing
+    loadFullPlan, isStepComplete, isEditing,
+    isDirty, isDraftSaved, lastSaved, validationStatus, validateCurrentStep, saveDraft, attemptedNext, setAttemptedNext,
+    hasDraft, clearDraft
   }), [
     data, updatePlan, updateTasks, addTask, deleteTask,
     updateObservations, addObservation, 
     updateFindings, addFinding, updateTestPlanId,
     addMultipleTasks, addMultipleObservations, resetData,
-    loadFullPlan, isStepComplete, isEditing
+    loadFullPlan, isStepComplete, isEditing,
+    isDirty, isDraftSaved, lastSaved, validationStatus, validateCurrentStep, saveDraft, attemptedNext,
+    hasDraft, clearDraft
   ]);
 
   return (
