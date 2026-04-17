@@ -55,7 +55,9 @@ export interface FullTestPlan {
   user_profile: string;
   method: string;
   test_date: string;
+  duration: string;
   place_channel: string;
+  link_file: string;
   moderator_name: string;
   observer_name: string;
   tool_prototype: string;
@@ -111,7 +113,9 @@ export interface FullTestData {
     user_profile: string;
     method: string;
     test_date: string;
+    duration: string;
     place_channel: string;
+    link_file: string;
     moderator_name: string;
     observer_name: string;
     tool_prototype: string;

@@ -36,13 +36,18 @@ const STORAGE_KEY = 'usability_test_draft';
 const initialData: FullTestData = {
   plan: {
     product_name: '', module_name: '', objective: '', user_profile: '',
-    method: '', test_date: '', place_channel: '', moderator_name: '',
+    method: '',
+    test_date: '',
+    duration: '',
+    place_channel: '', 
+    link_file: '',
+    moderator_name: '',
     observer_name: '', tool_prototype: '', admin_notes: '',
     closing_easy: '', closing_confusing: '', closing_change: '',
   },
   tasks: [{ task_label: 'T1', scenario: '', expected_result: '', main_metric: '', success_criteria: '', follow_up_question: '' }],
   observations: [{ participant_name: '', participant_profile: '', task_label: '', success: 'Si', time_seconds: '', errors_count: '', key_comments: '', detected_problem: '', severity: 'Baja', proposed_improvement: '' }],
-  findings: [{ problem: '', evidence: '', frequency: '', severity: '', recommendation: '', priority: 'Media', status: 'Pendiente' }],
+  findings: [{ problem: '', evidence: '', frequency: '', severity: 'Baja', recommendation: '', priority: 'Media', status: 'Pendiente' }],
 };
 
 export const TestPlanContext = createContext<TestPlanContextType | undefined>(undefined);
@@ -110,25 +115,68 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const validationStatus = useMemo<Record<StepName, ValidationState>>(() => {
-    // 1. Plan: Sólo requiere Nombre del Producto (BD) y Objetivo (Lógica)
-    const planValid = data.plan.product_name.trim() !== '' && 
-                     data.plan.objective.trim() !== '';
+    // 1. Plan: Requiere casi todo (Cimientos sólidos)
+    const p = data.plan;
+    const planValid = (p?.product_name || '').trim() !== '' && 
+                     (p?.module_name || '').trim() !== '' &&
+                     (p?.objective || '').trim() !== '' &&
+                     (p?.user_profile || '').trim() !== '' &&
+                     (p?.method || '').trim() !== '' &&
+                     (p?.moderator_name || '').trim() !== '' &&
+                     (p?.observer_name || '').trim() !== '' &&
+                     (p?.tool_prototype || '').trim() !== '' &&
+                     (p?.place_channel || '').trim() !== '';
     
-    // 2. Guía: Requiere que existan tareas y que al menos una tenga un escenario
-    const guideValid = data.tasks.length > 0 && data.tasks.some(t => t.scenario.trim() !== '');
+    // 2. Guía: Requiere tareas completas Y guion de entrevista definido
+    const g = data.plan;
+    const guideValid = Array.isArray(data.tasks) && 
+                       data.tasks.length > 0 && 
+                       data.tasks.every(t => 
+                         (t?.scenario || '').trim() !== '' &&
+                         (t?.follow_up_question || '').trim() !== ''
+                       ) &&
+                       (g?.closing_easy || '').trim() !== '' &&
+                       (g?.closing_confusing || '').trim() !== '' &&
+                       (g?.closing_change || '').trim() !== '';
     
-    // 3. Registro: Requiere al menos una observación con participante y tiempo válido
-    const recordValid = data.observations.length > 0 && 
-                       data.observations.some(o => o.participant_name.trim() !== '' && o.time_seconds !== '' && Number(o.time_seconds) > 0);
+    // 3. Registro: Todos los campos son obligatorios
+    const recordValid = Array.isArray(data.observations) && 
+                       data.observations.length > 0 && 
+                       data.observations.every(o => 
+                         (o?.participant_name || '').trim() !== '' && 
+                         (o?.participant_profile || '').trim() !== '' && 
+                         (o?.task_label || '').trim() !== '' && 
+                         o?.time_seconds !== '' && 
+                         !isNaN(Number(o?.time_seconds)) &&
+                         Number(o?.time_seconds) > 0 &&
+                         (o?.key_comments || '').trim() !== '' &&
+                         (o?.detected_problem || '').trim() !== '' &&
+                         (o?.severity || '').trim() !== '' &&
+                         (o?.proposed_improvement || '').trim() !== ''
+                       );
     
     // 4. Síntesis: Requiere al menos un hallazgo con problema definido
-    const synthesisValid = data.findings.length > 0 && data.findings.some(f => f.problem.trim() !== '');
+    const synthesisValid = Array.isArray(data.findings) && 
+                          data.findings.length > 0 && 
+                          data.findings.some(f => (f?.problem || '').trim() !== '');
 
     return {
-      plan: { isValid: planValid, errors: planValid ? [] : ['Define el nombre del producto y el objetivo de la misión'] },
-      guide: { isValid: guideValid, errors: guideValid ? [] : ['Debes definir al menos un escenario de tarea'] },
-      record: { isValid: recordValid, errors: recordValid ? [] : ['Registra al menos un participante con su tiempo'] },
-      synthesis: { isValid: synthesisValid, errors: synthesisValid ? [] : ['Debes registrar al menos un hallazgo'] },
+      plan: { 
+        isValid: planValid, 
+        errors: planValid ? [] : ['Completa todos los campos obligatorios de contexto y logística.'] 
+      },
+      guide: { 
+        isValid: guideValid, 
+        errors: guideValid ? [] : ['Debes definir al menos un escenario de tarea en el plan.'] 
+      },
+      record: { 
+        isValid: recordValid, 
+        errors: recordValid ? [] : ['Registra al menos un participante con un tiempo de ejecución válido.'] 
+      },
+      synthesis: { 
+        isValid: synthesisValid, 
+        errors: synthesisValid ? [] : ['Debes registrar al menos un hallazgo para cerrar la misión.'] 
+      },
     };
   }, [data]);
 

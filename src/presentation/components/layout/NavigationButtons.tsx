@@ -9,8 +9,8 @@ interface NavigationButtonsProps {
   currentStep: StepName | 'dashboard';
 }
 
-const steps: { id: string; path: string; stepName?: StepName }[] = [
-  { id: 'dashboard', path: '/' },
+const steps: { id: string; path: string; stepName: StepName | 'dashboard' }[] = [
+  { id: 'dashboard', path: '/', stepName: 'dashboard' },
   { id: 'plan', path: '/plan', stepName: 'plan' },
   { id: 'guide', path: '/guia', stepName: 'guide' },
   { id: 'record', path: '/registro', stepName: 'record' },
@@ -22,23 +22,17 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
   const { validationStatus, setAttemptedNext } = useTestPlan();
   const [showWarning, setShowWarning] = useState(false);
 
-  // Mapeo manual para asegurar que los IDs de las páginas coincidan con StepName
-  const stepMapping: Record<string, StepName | undefined> = {
-    'plan': 'plan',
-    'guia': 'guide',
-    'guide': 'guide',
-    'registro': 'record',
-    'record': 'record',
-    'sintesis': 'synthesis',
-    'synthesis': 'synthesis'
-  };
+  // Normalización y Blindaje: Si el paso no existe en validationStatus, asumimos válido para no romper.
+  const currentStepName = currentStep === 'dashboard' ? 'dashboard' : currentStep as StepName;
+  const stepInfo = (currentStepName !== 'dashboard' && validationStatus[currentStepName]) 
+    ? validationStatus[currentStepName] 
+    : { isValid: true, errors: [] };
+  
+  const isCurrentComplete = stepInfo.isValid;
+  const currentErrors = stepInfo.errors;
 
-  const currentStepName = stepMapping[currentStep];
-  const stepInfo = validationStatus[currentStepName as StepName];
-  const isCurrentComplete = stepInfo ? stepInfo.isValid : true;
-  const currentErrors = stepInfo ? stepInfo.errors : [];
+  const currentIndex = steps.findIndex(s => s.id === currentStep || s.stepName === currentStep);
 
-  const currentIndex = steps.findIndex(s => s.id === currentStep || s.stepName === currentStepName);
   const prevStep = steps[currentIndex - 1];
   const nextStep = steps[currentIndex + 1];
 
@@ -48,9 +42,13 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
       setShowWarning(true);
       return;
     }
-    setAttemptedNext(false);
-    navigate(nextStep.path);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    if (nextStep) {
+      setAttemptedNext(false);
+      setShowWarning(false);
+      navigate(nextStep.path);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (
