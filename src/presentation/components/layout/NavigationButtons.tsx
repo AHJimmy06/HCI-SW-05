@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertCircle, Save, CheckCircle2 } from "lucide-react";
 import { useTestPlan } from "../../context/useTestPlan";
 import type { StepName } from "../../../domain/entities/types";
 
@@ -19,8 +19,15 @@ const steps: { id: string; path: string; stepName: StepName | 'dashboard' }[] = 
 
 export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
   const navigate = useNavigate();
-  const { validationStatus, setAttemptedNext } = useTestPlan();
+  const { validationStatus, setAttemptedNext, saveDraft } = useTestPlan();
   const [showWarning, setShowWarning] = useState(false);
+  const [showSaveConfirm, setShowSaveConfirm] = useState(false);
+
+  const handleSaveProgress = () => {
+    saveDraft();
+    setShowSaveConfirm(true);
+    setTimeout(() => setShowSaveConfirm(false), 3000);
+  };
 
   // Normalización y Blindaje: Si el paso no existe en validationStatus, asumimos válido para no romper.
   const currentStepName = currentStep === 'dashboard' ? 'dashboard' : currentStep as StepName;
@@ -90,8 +97,8 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
             onClick={handleNextClick}
             disabled={!isCurrentComplete && !showWarning} // Solo habilitado si es válido o si queremos mostrar el error
             className={`w-full sm:w-auto flex items-center gap-4 px-10 py-8 rounded-2xl transition-all shadow-md group ${
-              isCurrentComplete 
-                ? "bg-primary hover:bg-primary/90 text-white" 
+              isCurrentComplete
+                ? "bg-primary hover:bg-primary/90 text-white"
                 : "bg-slate-200 text-slate-400 border-2 border-slate-300 cursor-not-allowed"
             }`}
           >
@@ -101,6 +108,26 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
             </div>
             <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" />
           </Button>
+        )}
+
+        {/* Botón Guardar Progreso */}
+        {currentStep !== 'dashboard' && (
+          <Button
+            variant="outline"
+            onClick={handleSaveProgress}
+            className="w-full sm:w-auto flex items-center gap-3 px-6 py-4 rounded-xl border-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 transition-all font-semibold"
+          >
+            <Save size={18} />
+            <span>Guardar Progreso</span>
+          </Button>
+        )}
+
+        {/* Toast de confirmación */}
+        {showSaveConfirm && (
+          <div className="absolute -top-16 right-0 bg-emerald-600 text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <CheckCircle2 size={16} />
+            <span className="text-xs font-bold">¡Guardado!</span>
+          </div>
         )}
       </div>
     </div>

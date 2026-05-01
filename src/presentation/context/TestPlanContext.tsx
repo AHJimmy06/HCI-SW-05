@@ -190,13 +190,23 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
 
   const updateTasks = useCallback((tasks: TaskDraft[]) => setData(prev => ({ ...prev, tasks })), []);
 
+  // Genera el siguiente ID de tarea único (no reutiliza IDs eliminados)
+  const generateUniqueTaskLabel = useCallback((existingTasks: TaskDraft[]): string => {
+    const existingLabels = new Set(existingTasks.map(t => t.task_label));
+    let nextNumber = 1;
+    while (existingLabels.has(`T${nextNumber}`)) {
+      nextNumber++;
+    }
+    return `T${nextNumber}`;
+  }, []);
+
   const addTask = useCallback(() => setData(prev => {
-    const newTasks = [...prev.tasks, { task_label: '', scenario: '', expected_result: '', main_metric: '', success_criteria: '', follow_up_question: '' }];
+    const newTask = { task_label: generateUniqueTaskLabel(prev.tasks), scenario: '', expected_result: '', main_metric: '', success_criteria: '', follow_up_question: '' };
     return {
       ...prev,
-      tasks: newTasks.map((t, i) => ({ ...t, task_label: `T${i + 1}` }))
+      tasks: [...prev.tasks, newTask]
     };
-  }), []);
+  }), [generateUniqueTaskLabel]);
 
   const deleteTask = useCallback((index: number) => {
     setData(prev => {
@@ -236,11 +246,25 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addMultipleTasks = useCallback((count: number) => setData(prev => {
+    const existingLabels = new Set(prev.tasks.map(t => t.task_label));
+    let nextNumber = 1;
     const newTasks = [...prev.tasks];
     for (let i = 0; i < count; i++) {
-      newTasks.push({ task_label: '', scenario: '', expected_result: '', main_metric: '', success_criteria: '', follow_up_question: '' });
+      while (existingLabels.has(`T${nextNumber}`)) {
+        nextNumber++;
+      }
+      newTasks.push({
+        task_label: `T${nextNumber}`,
+        scenario: '',
+        expected_result: '',
+        main_metric: '',
+        success_criteria: '',
+        follow_up_question: ''
+      });
+      existingLabels.add(`T${nextNumber}`);
+      nextNumber++;
     }
-    return { ...prev, tasks: newTasks.map((t, i) => ({ ...t, task_label: `T${i + 1}` })) };
+    return { ...prev, tasks: newTasks };
   }), []);
 
   const addMultipleObservations = useCallback((count: number) => setData(prev => {

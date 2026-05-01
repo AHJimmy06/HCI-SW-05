@@ -97,7 +97,7 @@ export function ModeratorGuidePage() {
       clearDraft();
       
       setTimeout(() => {
-        navigate("/", { 
+        navigate("/dashboard", { 
           replace: true,
           state: { successMessage: tentativeDate 
             ? `Plan archivado para el ${new Date(tentativeDate).toLocaleDateString()}.` 

@@ -25,18 +25,18 @@ function NavContent() {
 
   const handleLogout = async () => {
     await signOut();
-    navigate("/login");
+    navigate("/");
   };
 
   // Redirección de seguridad para Deep Links
   useEffect(() => {
     const path = location.pathname;
     if (path === '/guia' && !validationStatus.plan.isValid) {
-      navigate('/plan', { replace: true });
+navigate('/dashboard/plan', { replace: true });
+    } else if (path === '/guia' && !validationStatus.plan.isValid) {
+      navigate('/dashboard/guia', { replace: true });
     } else if (path === '/registro' && !validationStatus.guide.isValid) {
-      navigate('/guia', { replace: true });
-    } else if (path === '/sintesis' && !validationStatus.record.isValid) {
-      navigate('/registro', { replace: true });
+      navigate('/dashboard/registro', { replace: true });
     }
   }, [location.pathname, validationStatus, navigate]);
 
@@ -45,11 +45,11 @@ function NavContent() {
   }, [hasDraft]);
 
   const navItems = [
-    { to: "/", label: "Dashboard", icon: LayoutDashboard, step: null },
-    { to: "/plan", label: "Plan del Test", icon: ClipboardList, step: 'plan' },
-    { to: "/guia", label: "Guía de Moderación", icon: BookOpen, step: 'guide' },
-    { to: "/registro", label: "Registro de Observaciones", icon: Edit3, step: 'record' },
-    { to: "/sintesis", label: "Síntesis de Hallazgos", icon: Filter, step: 'synthesis' }
+    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, step: null },
+    { to: "/dashboard/plan", label: "Plan del Test", icon: ClipboardList, step: 'plan' },
+    { to: "/dashboard/guia", label: "Guía de Moderación", icon: BookOpen, step: 'guide' },
+    { to: "/dashboard/registro", label: "Registro de Observaciones", icon: Edit3, step: 'record' },
+    { to: "/dashboard/sintesis", label: "Síntesis de Hallazgos", icon: Filter, step: 'synthesis' }
   ];
 
   const canNavigateTo = (step: string | null) => {
@@ -61,7 +61,7 @@ function NavContent() {
     return false;
   };
 
-  const isWizardPage = ['/plan', '/guia', '/registro', '/sintesis'].includes(location.pathname);
+  const isWizardPage = ['/dashboard/plan', '/dashboard/guia', '/dashboard/registro', '/dashboard/sintesis'].includes(location.pathname);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-primary/20 selection:text-primary">

@@ -7,9 +7,10 @@ import {
   Clock 
 } from "lucide-react";
 import { NavigationButtons } from "../components/layout/NavigationButtons";
+import { AutoSaveIndicator } from "../components/layout/AutoSaveIndicator";
 
 export function TestPlanFormPage() {
-  const { data, updatePlan, updateTasks, addTask, deleteTask, attemptedNext } = useTestPlan();
+  const { data, updatePlan, updateTasks, addTask, deleteTask, attemptedNext, isDraftSaved, lastSaved } = useTestPlan();
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const handleTaskChange = (index: number, field: string, value: string) => {
@@ -32,7 +33,7 @@ export function TestPlanFormPage() {
   };
 
   const inputClass = (id: string, val: string) => `
-    bg-white border-slate-300 focus:border-primary focus:ring-primary/20 transition-all duration-200 
+    bg-white border-slate-300 hover:border-primary hover:shadow-sm focus:border-primary focus:ring-primary/20 transition-all duration-200
     ${getFieldError(id, val) ? 'border-red-500 ring-2 ring-red-500/20 bg-red-50/30' : ''}
   `;
 
@@ -53,6 +54,7 @@ export function TestPlanFormPage() {
             <Info size={18} aria-hidden="true" />
             Configuración del Plan
           </div>
+          <AutoSaveIndicator isDraftSaved={isDraftSaved} lastSaved={lastSaved} className="shrink-0" />
         </div>
       </header>
 
@@ -118,8 +120,11 @@ export function TestPlanFormPage() {
               </p>
             </div>
             <div className="md:col-span-2 space-y-2">
-              <label htmlFor="user_profile" className="text-sm font-semibold text-slate-800 block">
+              <label htmlFor="user_profile" className="text-sm font-semibold text-slate-800 block flex items-center gap-1.5">
                 Perfil de usuarios <span className="text-red-500">*</span>
+                <span title="Edad, experiencia tecnológica y rasgos relevantes del grupo que participó en el test." className="cursor-help text-slate-400 hover:text-primary">
+                  <Info size={14} />
+                </span>
               </label>
               <Input 
                 id="user_profile"

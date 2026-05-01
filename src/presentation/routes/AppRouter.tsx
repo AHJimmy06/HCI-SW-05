@@ -4,6 +4,7 @@ import { Layout } from "../components/layout/Layout";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { LoginPage } from "../pages/LoginPage";
+import { LandingPage } from "../pages/LandingPage";
 
 // Code splitting para mejorar el rendimiento de carga inicial
 const DashboardPage = lazy(() => import("../pages/DashboardPage").then(m => ({ default: m.DashboardPage })));
@@ -36,7 +37,8 @@ export function AppRouter() {
         <Routes>
           <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
           
-          <Route path="/" element={
+          <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+          <Route path="/dashboard" element={
             <ProtectedRoute>
               <Layout />
             </ProtectedRoute>

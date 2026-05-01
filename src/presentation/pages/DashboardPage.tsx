@@ -354,7 +354,7 @@ export function DashboardPage() {
 
   const handleNewPlan = () => {
     resetData();
-    navigate("/plan");
+    navigate("/dashboard/plan");
   };
 
   return (
