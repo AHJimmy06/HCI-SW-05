@@ -6,7 +6,7 @@ import type {
   IFindingRepository,
   IParticipantRepository 
 } from '../../domain/repositories/interfaces';
-import type { Task, Observation, Finding, Participant, FullTestPlan, DashboardMetrics } from '../../domain/entities/types';
+import type { Task, Observation, Finding, Participant, FullTestPlan, DashboardMetrics, SprintBacklogCSV } from '../../domain/entities/types';
 
 export class SupabaseTestPlanRepository implements ITestPlanRepository {
   async create(plan: Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>): Promise<string> {
@@ -143,6 +143,49 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
 
     if (error) throw new Error(error.message);
     return data || [];
+  }
+
+  async getSprintBacklog(testPlanId: string): Promise<SprintBacklogCSV | null> {
+    const { data, error } = await supabase
+      .from('sprint_backlogs')
+      .select('*')
+      .eq('test_plan_id', testPlanId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+
+    return {
+      sprint_nombre: data.sprint_nombre,
+      duracion_sprint_dias: data.duracion_sprint_dias,
+      objetivo_sprint: data.objetivo_sprint || "",
+      definition_of_done: data.definition_of_done || [],
+      notas: data.notas || "",
+      user_stories_csv: data.user_stories_csv,
+      tasks_csv: data.tasks_csv || "",
+    };
+  }
+
+  async saveSprintBacklog(testPlanId: string, backlog: SprintBacklogCSV, userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('sprint_backlogs')
+      .upsert(
+        {
+          test_plan_id: testPlanId,
+          sprint_nombre: backlog.sprint_nombre,
+          duracion_sprint_dias: backlog.duracion_sprint_dias,
+          objetivo_sprint: backlog.objetivo_sprint,
+          definition_of_done: backlog.definition_of_done,
+          notas: backlog.notas,
+          user_stories_csv: backlog.user_stories_csv,
+          tasks_csv: backlog.tasks_csv,
+          created_by: userId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'test_plan_id' }
+      );
+
+    if (error) throw new Error(error.message);
   }
 }
 

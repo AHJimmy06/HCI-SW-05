@@ -97,6 +97,17 @@ export class SupabaseProjectRepository implements IProjectRepository {
     return data || [];
   }
 
+  async getById(projectId: string): Promise<Project | null> {
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', projectId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
   async getMemberCount(projectId: string): Promise<number> {
     const { count, error } = await supabase
       .from('project_members')

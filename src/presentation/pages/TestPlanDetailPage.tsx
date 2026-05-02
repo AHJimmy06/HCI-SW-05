@@ -1,21 +1,52 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { SupabaseTestPlanRepository } from "../../infrastructure/repositories/SupabaseRepositories";
-import type { FullTestPlan, Finding, Observation, Task, Participant } from "../../domain/entities/types";
+import { SupabaseOrganizationMemberRepository, SupabaseProjectRepository } from "../../infrastructure/repositories/CollaborationRepositories";
+import type { FullTestPlan, Finding, Observation, Task, Participant, SprintBacklogCSV } from "../../domain/entities/types";
+import { generateSprintBacklog } from "../../domain/services/SprintBacklogGenerator";
+import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, Target, Zap, Shield, BarChart3,
   TrendingUp, Clock, AlertOctagon, Users, FileText,
   ClipboardList, CheckCircle2, XCircle, Loader2,
-  User
+  User, Scissors, AlertTriangle, FileBarChart, Clock3
 } from "lucide-react";
+import { SprintBacklogResult } from "../components/SprintBacklogResult";
 
 export function TestPlanDetailPage() {
   const { testPlanId } = useParams<{ testPlanId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const repo = new SupabaseTestPlanRepository();
+  const projectRepo = new SupabaseProjectRepository();
+  const memberRepo = new SupabaseOrganizationMemberRepository();
   const [plan, setPlan] = useState<FullTestPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [sprintBacklog, setSprintBacklog] = useState<SprintBacklogCSV | null>(null);
+  const [showBacklogModal, setShowBacklogModal] = useState(false);
+  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+
+  const handleGenerateSprintBacklog = async () => {
+    if (!plan || !user) return;
+    setIsGenerating(true);
+    setGenerationError(null);
+    try {
+      const backlog = await generateSprintBacklog(plan);
+      // Save to database
+      await repo.saveSprintBacklog(plan.id!, backlog, user.id);
+      setSprintBacklog(backlog);
+      setShowBacklogModal(true);
+    } catch (err) {
+      console.error(err);
+      setGenerationError(err instanceof Error ? err.message : "Error al generar el Sprint Backlog");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   useEffect(() => {
     if (!testPlanId) return;
@@ -23,9 +54,27 @@ export function TestPlanDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const repo = new SupabaseTestPlanRepository();
         const data = await repo.getFullPlan(testPlanId);
         setPlan(data);
+
+        // Load existing sprint backlog if any (non-blocking — don't break page if this fails)
+        try {
+          const existingBacklog = await repo.getSprintBacklog(testPlanId);
+          if (existingBacklog) {
+            setSprintBacklog(existingBacklog);
+          }
+        } catch (e) {
+          console.warn("No se pudo cargar el sprint backlog existente:", e);
+        }
+
+        // Check if user is org admin (only if plan has project_id and user is logged in)
+        if (data.project_id && user) {
+          const project = await projectRepo.getById(data.project_id);
+          if (project) {
+            const admin = await memberRepo.isAdmin(project.organization_id, user.id);
+            setIsOrgAdmin(admin);
+          }
+        }
       } catch (err) {
         console.error(err);
         setError("No se pudo cargar el plan de prueba.");
@@ -34,7 +83,7 @@ export function TestPlanDetailPage() {
       }
     };
     load();
-  }, [testPlanId]);
+  }, [testPlanId, user]);
 
   // Calculate metrics from observations
   const observations = plan?.observations || [];
@@ -113,9 +162,42 @@ export function TestPlanDetailPage() {
                 </p>
               </div>
             </div>
-            <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider rounded-full border border-primary/20">
-              Ejecutado
-            </span>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider rounded-full border border-primary/20">
+                Ejecutado
+              </span>
+              {plan.findings && plan.findings.length > 0 && (
+                sprintBacklog ? (
+                  <Button
+                    size="sm"
+                    onClick={() => setShowBacklogModal(true)}
+                    className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 gap-2"
+                  >
+                    <FileBarChart size={14} />
+                    Ver Sprint Backlog
+                  </Button>
+                ) : isOrgAdmin ? (
+                  <Button
+                    size="sm"
+                    onClick={handleGenerateSprintBacklog}
+                    disabled={isGenerating}
+                    className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 gap-2"
+                  >
+                    {isGenerating ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Scissors size={14} />
+                    )}
+                    {isGenerating ? "Generando..." : "Generar Sprint Backlog"}
+                  </Button>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-500 text-xs font-medium rounded-full border border-slate-200">
+                    <Clock3 size={13} />
+                    Sin backlog generado
+                  </span>
+                )
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -358,6 +440,30 @@ export function TestPlanDetailPage() {
           KPIs de usabilidad estándar ISO 9241-11
         </p>
       </footer>
+
+      {/* Sprint Backlog generation error */}
+      {generationError && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm bg-red-50 border border-red-200 rounded-xl p-4 shadow-xl">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={16} className="text-red-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">Error al generar</p>
+              <p className="text-xs text-red-600 mt-0.5">{generationError}</p>
+            </div>
+            <button onClick={() => setGenerationError(null)} className="text-red-400 hover:text-red-600 ml-auto">
+              <XCircle size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Sprint Backlog Result Modal */}
+      <SprintBacklogResult
+        backlog={sprintBacklog}
+        open={showBacklogModal}
+        onClose={() => setShowBacklogModal(false)}
+        productName={plan?.product_name || "Producto"}
+      />
     </div>
   );
 }

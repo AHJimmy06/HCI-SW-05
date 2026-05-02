@@ -1,4 +1,15 @@
 import type { DashboardMetrics, FullTestPlan, Task, Participant, Observation, Finding } from "../entities/types";
+import type { SprintBacklogCSV } from "../entities/types";
+
+export interface ITestPlanRepository {
+  getAllMetrics(): Promise<DashboardMetrics[]>;
+  getFullPlan(id: string): Promise<FullTestPlan>;
+  create(data: Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>): Promise<string>;
+  update(id: string, data: Partial<Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>>): Promise<void>;
+  delete(id: string): Promise<void>;
+  getSprintBacklog(testPlanId: string): Promise<SprintBacklogCSV | null>;
+  saveSprintBacklog(testPlanId: string, backlog: SprintBacklogCSV, userId: string): Promise<void>;
+}
 import type { Organization, Project, OrganizationMember, MembershipRequest } from "../entities/collaboration";
 
 export interface ITestPlanRepository {
@@ -35,6 +46,7 @@ export interface IOrganizationRepository {
 export interface IProjectRepository {
   create(orgId: string, name: string): Promise<string>;
   getByOrg(orgId: string): Promise<Project[]>;
+  getById(projectId: string): Promise<Project | null>;
   getMemberCount(projectId: string): Promise<number>;
   assignMember(projectId: string, userId: string): Promise<void>;
   removeMember(projectId: string, userId: string): Promise<void>;

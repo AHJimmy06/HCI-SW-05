@@ -137,3 +137,43 @@ export interface ValidationState {
   isValid: boolean;
   errors: string[];
 }
+
+// Sprint Backlog types (Scrum)
+export interface BacklogUserStory {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  criterio_aceptacion: string[];
+  prioridad: "Crítica" | "Alta" | "Media" | "Baja";
+  esfuerzo: string; // story points o horas
+  tipo: "feature" | "bugfix" | "improvement" | "spike";
+}
+
+export interface BacklogTask {
+  id: string;
+  descripcion: string;
+  responsable?: string;
+  estimado_horas?: number;
+  completada: boolean;
+}
+
+export interface SprintBacklog {
+  sprint_nombre: string;
+  duracion_sprint_dias: number;
+  objetivo_sprint: string;
+  historias_usuario: BacklogUserStory[];
+  tareas_tecnicas: BacklogTask[];
+  definition_of_done: string[];
+  notas: string;
+}
+
+// Sprint Backlog CSV format for Notion import
+export interface SprintBacklogCSV {
+  sprint_nombre: string;
+  duracion_sprint_dias: number;
+  objetivo_sprint: string;
+  definition_of_done: string[];
+  notas: string;
+  user_stories_csv: string;
+  tasks_csv: string;
+}

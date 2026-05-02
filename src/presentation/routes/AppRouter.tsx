@@ -58,7 +58,7 @@ export function AppRouter() {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+          <Route path="/" element={user ? <Navigate to="/dashboard/organizations" replace /> : <LandingPage />} />
           <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
 
           {/* Unified dashboard route - ALL protected pages under one layout */}
