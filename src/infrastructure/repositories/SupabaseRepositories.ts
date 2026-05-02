@@ -6,7 +6,7 @@ import type {
   IFindingRepository,
   IParticipantRepository 
 } from '../../domain/repositories/interfaces';
-import type { Task, Observation, Finding, Participant, FullTestPlan, DashboardMetrics } from '../../domain/entities/types';
+import type { Task, Observation, Finding, Participant, FullTestPlan, DashboardMetrics, SprintBacklogCSV } from '../../domain/entities/types';
 
 export class SupabaseTestPlanRepository implements ITestPlanRepository {
   async create(plan: Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>): Promise<string> {
@@ -69,7 +69,73 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
     return data;
   }
 
-  async getAllMetrics(): Promise<DashboardMetrics[]> {
+  async getAllMetrics(projectId?: string): Promise<DashboardMetrics[]> {
+    // If projectId is provided, query directly without relying on the RLS-filtered view
+    if (projectId) {
+      const { data, error } = await supabase
+        .from('test_plans')
+        .select(`
+          id,
+          product_name,
+          module_name,
+          test_date,
+          created_at,
+          project_id
+        `)
+        .eq('project_id', projectId)
+        .is('deleted_at', null)
+        .order('test_date', { ascending: false });
+
+      if (error) throw new Error(error.message);
+
+      // Get observation counts per plan
+      const planIds = (data || []).map(p => p.id);
+      let observationCounts: Record<string, number> = {};
+      let taskSuccessCounts: Record<string, number> = {};
+      let errorCounts: Record<string, number> = {};
+      let timeSums: Record<string, number> = {};
+
+      if (planIds.length > 0) {
+        const { data: obs } = await supabase
+          .from('observations')
+          .select('test_plan_id, success, time_seconds, errors_count')
+          .in('test_plan_id', planIds);
+
+        if (obs) {
+          obs.forEach(o => {
+            const tid = o.test_plan_id;
+            observationCounts[tid] = (observationCounts[tid] || 0) + 1;
+            if (o.success) taskSuccessCounts[tid] = (taskSuccessCounts[tid] || 0) + 1;
+            errorCounts[tid] = (errorCounts[tid] || 0) + (o.errors_count || 0);
+            timeSums[tid] = (timeSums[tid] || 0) + (o.time_seconds || 0);
+          });
+        }
+      }
+
+      const metrics: DashboardMetrics[] = (data || []).map(p => {
+        const totalObs = observationCounts[p.id] || 0;
+        const successes = taskSuccessCounts[p.id] || 0;
+        const totalErrors = errorCounts[p.id] || 0;
+        const totalTime = timeSums[p.id] || 0;
+        const successRate = totalObs > 0 ? Math.round((successes / totalObs) * 10000) / 100 : 0;
+
+        return {
+          test_plan_id: p.id,
+          product_name: p.product_name + (p.module_name ? ` : ${p.module_name}` : ''),
+          test_date: p.test_date || new Date(p.created_at).toISOString().split('T')[0],
+          total_observations: totalObs,
+          successful_tasks: successes,
+          avg_time_seconds: totalObs > 0 ? Math.round(totalTime / totalObs) : 0,
+          total_errors: totalErrors,
+          success_rate: successRate,
+          project_id: p.project_id
+        };
+      });
+
+      return metrics;
+    }
+
+    // Default: use the RLS-filtered view for general dashboard
     const { data, error } = await supabase
       .from('dashboard_metrics')
       .select('*')
@@ -77,6 +143,49 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
 
     if (error) throw new Error(error.message);
     return data || [];
+  }
+
+  async getSprintBacklog(testPlanId: string): Promise<SprintBacklogCSV | null> {
+    const { data, error } = await supabase
+      .from('sprint_backlogs')
+      .select('*')
+      .eq('test_plan_id', testPlanId)
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+
+    return {
+      sprint_nombre: data.sprint_nombre,
+      duracion_sprint_dias: data.duracion_sprint_dias,
+      objetivo_sprint: data.objetivo_sprint || "",
+      definition_of_done: data.definition_of_done || [],
+      notas: data.notas || "",
+      user_stories_csv: data.user_stories_csv,
+      tasks_csv: data.tasks_csv || "",
+    };
+  }
+
+  async saveSprintBacklog(testPlanId: string, backlog: SprintBacklogCSV, userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('sprint_backlogs')
+      .upsert(
+        {
+          test_plan_id: testPlanId,
+          sprint_nombre: backlog.sprint_nombre,
+          duracion_sprint_dias: backlog.duracion_sprint_dias,
+          objetivo_sprint: backlog.objetivo_sprint,
+          definition_of_done: backlog.definition_of_done,
+          notas: backlog.notas,
+          user_stories_csv: backlog.user_stories_csv,
+          tasks_csv: backlog.tasks_csv,
+          created_by: userId,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'test_plan_id' }
+      );
+
+    if (error) throw new Error(error.message);
   }
 }
 

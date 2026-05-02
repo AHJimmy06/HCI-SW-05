@@ -10,10 +10,10 @@ import {
 import type { StepName } from '../../../domain/entities/types';
 
 const steps: { id: StepName; label: string; icon: any; path: string }[] = [
-  { id: 'plan', label: 'Plan', icon: ClipboardList, path: '/plan' },
-  { id: 'guide', label: 'Guía', icon: BookOpen, path: '/guia' },
-  { id: 'record', label: 'Registro', icon: Edit3, path: '/registro' },
-  { id: 'synthesis', label: 'Síntesis', icon: Filter, path: '/sintesis' },
+  { id: 'plan', label: 'Plan', icon: ClipboardList, path: '/dashboard/plan' },
+  { id: 'guide', label: 'Guía', icon: BookOpen, path: '/dashboard/guia' },
+  { id: 'record', label: 'Registro', icon: Edit3, path: '/dashboard/registro' },
+  { id: 'synthesis', label: 'Síntesis', icon: Filter, path: '/dashboard/sintesis' },
 ];
 
 export function NavigationStepper() {
@@ -23,10 +23,10 @@ export function NavigationStepper() {
 
   const getCurrentStep = (): StepName | null => {
     const path = location.pathname;
-    if (path === '/plan') return 'plan';
-    if (path === '/guia') return 'guide';
-    if (path === '/registro') return 'record';
-    if (path === '/sintesis') return 'synthesis';
+    if (path.endsWith('/plan')) return 'plan';
+    if (path.endsWith('/guia')) return 'guide';
+    if (path.endsWith('/registro')) return 'record';
+    if (path.endsWith('/sintesis')) return 'synthesis';
     return null;
   };
 
@@ -34,14 +34,14 @@ export function NavigationStepper() {
   if (!currentStep) return null;
 
   const handleNavigate = (path: string, stepId: StepName) => {
-    // Permite navegar si es el paso actual, o si es un paso previo, o si el paso anterior es válido
+    // Allows navigate if it's current step, or a previous step, or previous step is valid
     const stepIndex = steps.findIndex(s => s.id === stepId);
     const currentIndex = steps.findIndex(s => s.id === currentStep);
 
     if (stepIndex <= currentIndex) {
       navigate(path);
     } else {
-      // Para navegar hacia adelante, el paso anterior debe ser válido
+      // To navigate forward, previous step must be valid
       const prevStep = steps[stepIndex - 1];
       if (validationStatus[prevStep.id].isValid) {
         navigate(path);
