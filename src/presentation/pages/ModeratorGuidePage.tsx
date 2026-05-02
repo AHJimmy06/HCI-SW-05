@@ -42,7 +42,7 @@ export function ModeratorGuidePage() {
 
   const handleStartNow = () => {
     updatePlan('test_date', new Date().toISOString().split('T')[0]);
-    navigate("/registro");
+    navigate("/dashboard/registro");
   };
 
   const handleNextStep = () => {
@@ -93,15 +93,21 @@ export function ModeratorGuidePage() {
         await taskRepo.saveAll(tasksToSave);
       }
 
+      const getDashboardPath = () => {
+        const projectId = sessionStorage.getItem('active_project_id');
+        if (projectId) return `/dashboard/project/${projectId}`;
+        return '/dashboard';
+      };
+
       setShowTransitionModal(false);
       clearDraft();
-      
+
       setTimeout(() => {
-        navigate("/", { 
+        navigate(getDashboardPath(), {
           replace: true,
-          state: { successMessage: tentativeDate 
-            ? `Plan archivado para el ${new Date(tentativeDate).toLocaleDateString()}.` 
-            : "¡Planificación lista! Misión guardada en el archivo." } 
+          state: { successMessage: tentativeDate
+            ? `Plan archivado para el ${new Date(tentativeDate).toLocaleDateString()}.`
+            : "¡Planificación lista! Misión guardada en el archivo." }
         });
       }, 100);
 
@@ -374,7 +380,7 @@ export function ModeratorGuidePage() {
             </div>
           )}
 
-          <Button variant="ghost" onClick={() => navigate("/plan")} className="flex items-center gap-2 px-6 py-6 rounded-xl font-semibold hover:bg-slate-100 transition-all text-slate-700">
+          <Button variant="ghost" onClick={() => navigate("/dashboard/plan")} className="flex items-center gap-2 px-6 py-6 rounded-xl font-semibold hover:bg-slate-100 transition-all text-slate-700">
             <ChevronLeft size={20} />
             <div className="flex flex-col items-start"><span className="text-xs uppercase font-bold text-slate-500">Regresar</span><span className="font-bold uppercase text-slate-900">Planificación</span></div>
           </Button>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +38,7 @@ import { NavigationButtons } from "../components/layout/NavigationButtons";
 
 export function FindingsSynthesisPage() {
   const navigate = useNavigate();
-  const { data, updateFindings, addFinding, updateTestPlanId, clearDraft, attemptedNext } = useTestPlan();
+  const { data, updateFindings, addFinding, updateTestPlanId, clearDraft, attemptedNext, saveDraft } = useTestPlan();
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [saveStatus, setSaveStatus] = useState<{
@@ -155,12 +155,18 @@ export function FindingsSynthesisPage() {
       await findingRepo.saveAll(findingsToSave);
       if (planId) updateTestPlanId(planId);
 
+      const getDashboardPath = () => {
+        const projectId = sessionStorage.getItem('active_project_id');
+        if (projectId) return `/dashboard/project/${projectId}`;
+        return '/dashboard';
+      };
+
       // Navegamos al dashboard PRIMERO para asegurar que el state llegue
-      navigate("/", { 
+      navigate(getDashboardPath(), {
         replace: true,
-        state: { 
-          successMessage: "¡Misión IHC completada! Los hallazgos están en el tablero." 
-        } 
+        state: {
+          successMessage: "¡Misión IHC completada! Los hallazgos están en el tablero."
+        }
       });
 
       // Limpiamos el draft después de un breve delay para no romper la transición
@@ -491,13 +497,18 @@ export function FindingsSynthesisPage() {
               <span className="h-px w-8 bg-slate-200"></span>
             </div>
 
-            <Link
-              to="/"
+            <Button
+              onClick={() => {
+                saveDraft();
+                const projectId = sessionStorage.getItem('active_project_id');
+                navigate(projectId ? `/dashboard/project/${projectId}` : '/dashboard');
+              }}
+              variant="outline"
               className="group border-2 border-slate-200 text-slate-500 hover:border-primary hover:text-primary px-8 py-4 rounded-2xl transition-all flex items-center gap-3 font-bold bg-white"
             >
               <Clock className="group-hover:rotate-12 transition-transform" size={20} />
-              Volver al Dashboard (Sin guardar)
-            </Link>
+              Guardar y Volver al Dashboard
+            </Button>
           </div>
         </div>
 
