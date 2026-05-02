@@ -35,6 +35,7 @@ const STORAGE_KEY = 'usability_test_draft';
 
 const initialData: FullTestData = {
   plan: {
+    project_id: '',
     product_name: '', module_name: '', objective: '', user_profile: '',
     method: '',
     test_date: '',

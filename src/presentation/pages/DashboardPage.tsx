@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { SupabaseTestPlanRepository } from "../../infrastructure/repositories/SupabaseRepositories";
 import type { DashboardMetrics, FullTestPlan, Task, Observation, Finding, Participant, FullTestData, ObservationDraft, FindingDraft } from "../../domain/entities/types";
 import { useTestPlan } from "../context/useTestPlan";
 import { Button } from "@/components/ui/button";
-import { 
-  LayoutDashboard, TrendingUp, Clock, AlertOctagon, Users, 
+import {
+  LayoutDashboard, TrendingUp, Clock, AlertOctagon, Users,
   FileBarChart, Loader2,
   ChevronUp, ClipboardList, FileText,
   Edit, Eye, Plus, Trash2, AlertTriangle, Download,
@@ -17,6 +17,7 @@ import autoTable from "jspdf-autotable";
 export function DashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { projectId } = useParams<{ projectId?: string }>();
   const { loadFullPlan, resetData } = useTestPlan();
   const [metrics, setMetrics] = useState<DashboardMetrics[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,7 @@ export function DashboardPage() {
       setLoading(true);
       setError(null);
       const repo = new SupabaseTestPlanRepository();
-      const data = await repo.getAllMetrics();
+      const data = await repo.getAllMetrics(projectId);
       setMetrics(Array.isArray(data) ? data : []);
     } catch (err: unknown) {
       console.error("Error al cargar métricas", err);
@@ -72,7 +73,7 @@ export function DashboardPage() {
 
   useEffect(() => {
     fetchMetrics();
-  }, []);
+  }, [projectId]);
 
   const { executedPlans, plannedPlans } = useMemo(() => {
     const filtered = searchTerm.trim() 

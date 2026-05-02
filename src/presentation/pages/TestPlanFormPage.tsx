@@ -1,17 +1,67 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useTestPlan } from "../context/useTestPlan";
-import { 
-  Plus, Trash2, Info, ClipboardList, Users, Settings, 
-  Clock 
+import { useAuth } from "../context/AuthContext";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "../../infrastructure/config/supabase";
+import type { Project } from "../../domain/entities/collaboration";
+import {
+  Plus, Trash2, Info, ClipboardList, Users, Settings,
+  Clock, FolderKanban
 } from "lucide-react";
 import { NavigationButtons } from "../components/layout/NavigationButtons";
 import { AutoSaveIndicator } from "../components/layout/AutoSaveIndicator";
 
 export function TestPlanFormPage() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { data, updatePlan, updateTasks, addTask, deleteTask, attemptedNext, isDraftSaved, lastSaved } = useTestPlan();
+  const { user } = useAuth();
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [blocked, setBlocked] = useState(false);
+
+  // Check for project context on mount
+  useEffect(() => {
+    const projectId = searchParams.get('project') || sessionStorage.getItem('active_project_id');
+    if (!projectId) {
+      setBlocked(true);
+      return;
+    }
+    if (!data.plan.project_id) {
+      updatePlan('project_id', projectId);
+    }
+  }, []);
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      if (!user) return;
+      try {
+        // Get all orgs user belongs to, then all projects in those orgs
+        const { data: memberships } = await supabase
+          .from("organization_members")
+          .select("organization_id")
+          .eq("user_id", user.id);
+        
+        if (!memberships || memberships.length === 0) return;
+        
+        const orgIds = memberships.map(m => m.organization_id);
+        const { data: projList } = await supabase
+          .from("projects")
+          .select("*")
+          .in("organization_id", orgIds);
+        
+        setProjects(projList || []);
+      } catch (err) {
+        console.error("Error loading projects", err);
+      }
+    };
+    loadProjects();
+  }, [user]);
+
+  const selectedProject = projects.find(p => p.id === data.plan.project_id);
 
   const handleTaskChange = (index: number, field: string, value: string) => {
     const newTasks = [...data.tasks];
@@ -38,22 +88,60 @@ export function TestPlanFormPage() {
   `;
 
   return (
-    <div className="flex flex-col min-h-full">
-      <header className="px-6 py-8 border-b border-slate-200 bg-slate-50">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <ClipboardList className="text-primary" aria-hidden="true" size={28} />
-              Planificación del Test
-            </h1>
-            <p className="mt-1 text-slate-700 max-w-2xl text-sm font-medium">
-              Configuración de los objetivos, perfil de usuarios y logística general del estudio.
-            </p>
+    <>
+      {blocked ? (
+        <div className="flex flex-col items-center justify-center py-32 text-center px-6">
+          <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-6">
+            <FolderKanban size={32} />
           </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Primero elegí un proyecto</h2>
+          <p className="text-slate-700 max-w-md mb-6">
+            Los tests de usabilidad deben pertenecer a un proyecto. Entrá por una organización para seleccionar un proyecto.
+          </p>
+          <Button
+            onClick={() => navigate('/dashboard/organizations')}
+            className="bg-primary hover:bg-primary/90 text-white font-semibold px-6 py-3 rounded-xl"
+          >
+            Ir a mis organizaciones
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col min-h-full">
+          <header className="px-6 py-8 border-b border-slate-200 bg-slate-50">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                  <ClipboardList className="text-primary" aria-hidden="true" size={28} />
+                  Planificación del Test
+                </h1>
+                <p className="mt-1 text-slate-700 max-w-2xl text-sm font-medium">
+                  Configuración de los objetivos, perfil de usuarios y logística general del estudio.
+                </p>
+              </div>
           <div className="flex items-center gap-2 text-sm text-primary font-semibold bg-primary/10 px-4 py-2 rounded-full border-2 border-primary/20">
             <Info size={18} aria-hidden="true" />
             Configuración del Plan
           </div>
+          {projects.length > 0 && (
+            <div className="flex items-center gap-2">
+              <FolderKanban size={18} className="text-slate-500" />
+              <select
+                value={data.plan.project_id || ""}
+                onChange={(e) => updatePlan("project_id", e.target.value)}
+                className="text-sm border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white font-medium"
+              >
+                <option value="">Sin proyecto</option>
+                {projects.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {selectedProject && (
+                <Badge variant="outline" className="text-xs">
+                  {selectedProject.name}
+                </Badge>
+              )}
+            </div>
+          )}
           <AutoSaveIndicator isDraftSaved={isDraftSaved} lastSaved={lastSaved} className="shrink-0" />
         </div>
       </header>
@@ -397,7 +485,9 @@ export function TestPlanFormPage() {
         </section>
 
         <NavigationButtons currentStep="plan" />
-      </div>
-    </div>
+        </div>
+        </div>
+      )}
+    </>
   );
 }

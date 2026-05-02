@@ -10,11 +10,11 @@ interface NavigationButtonsProps {
 }
 
 const steps: { id: string; path: string; stepName: StepName | 'dashboard' }[] = [
-  { id: 'dashboard', path: '/', stepName: 'dashboard' },
-  { id: 'plan', path: '/plan', stepName: 'plan' },
-  { id: 'guide', path: '/guia', stepName: 'guide' },
-  { id: 'record', path: '/registro', stepName: 'record' },
-  { id: 'synthesis', path: '/sintesis', stepName: 'synthesis' },
+  { id: 'dashboard', path: '/dashboard', stepName: 'dashboard' },
+  { id: 'plan', path: '/dashboard/plan', stepName: 'plan' },
+  { id: 'guide', path: '/dashboard/guia', stepName: 'guide' },
+  { id: 'record', path: '/dashboard/registro', stepName: 'record' },
+  { id: 'synthesis', path: '/dashboard/sintesis', stepName: 'synthesis' },
 ];
 
 export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
@@ -31,10 +31,10 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
 
   // Normalización y Blindaje: Si el paso no existe en validationStatus, asumimos válido para no romper.
   const currentStepName = currentStep === 'dashboard' ? 'dashboard' : currentStep as StepName;
-  const stepInfo = (currentStepName !== 'dashboard' && validationStatus[currentStepName]) 
-    ? validationStatus[currentStepName] 
+  const stepInfo = (currentStepName !== 'dashboard' && validationStatus[currentStepName])
+    ? validationStatus[currentStepName]
     : { isValid: true, errors: [] };
-  
+
   const isCurrentComplete = stepInfo.isValid;
   const currentErrors = stepInfo.errors;
 
@@ -43,17 +43,29 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
   const prevStep = steps[currentIndex - 1];
   const nextStep = steps[currentIndex + 1];
 
+  // Get project context for dashboard navigation
+  const getDashboardPath = () => {
+    const projectId = sessionStorage.getItem('active_project_id');
+    if (projectId) return `/dashboard/project/${projectId}`;
+    return '/dashboard';
+  };
+
+  const getTargetPath = (step: typeof steps[0]) => {
+    if (step.id === 'dashboard') return getDashboardPath();
+    return step.path;
+  };
+
   const handleNextClick = () => {
     if (!isCurrentComplete) {
       setAttemptedNext(true);
       setShowWarning(true);
       return;
     }
-    
+
     if (nextStep) {
       setAttemptedNext(false);
       setShowWarning(false);
-      navigate(nextStep.path);
+      navigate(getTargetPath(nextStep));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -64,7 +76,7 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
         {prevStep && (
           <Button
             variant="ghost"
-            onClick={() => navigate(prevStep.path)}
+            onClick={() => navigate(getTargetPath(prevStep))}
             className="text-slate-700 hover:text-primary hover:bg-primary/10 flex items-center gap-2 px-6 py-6 rounded-xl transition-all font-semibold"
           >
             <ChevronLeft size={20} aria-hidden="true" />
@@ -78,7 +90,7 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
 
       <div className="flex flex-col items-center gap-4 w-full sm:w-auto relative">
         {!isCurrentComplete && showWarning && (
-          <div 
+          <div
             role="alert"
             className="absolute -top-20 md:-top-16 flex flex-col items-center gap-1 text-red-900 bg-red-50 px-4 py-3 rounded-xl border-2 border-red-200 shadow-xl animate-in fade-in slide-in-from-bottom-2 duration-300 z-50 w-max"
           >
@@ -91,7 +103,7 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
             </p>
           </div>
         )}
-        
+
         {nextStep && (
           <Button
             onClick={handleNextClick}

@@ -49,6 +49,7 @@ export interface Finding {
 
 export interface FullTestPlan {
   id?: string;
+  project_id?: string;
   product_name: string;
   module_name: string;
   objective: string;
@@ -107,6 +108,7 @@ export interface FindingDraft extends Omit<Finding, 'id' | 'test_plan_id'> {
 export interface FullTestData {
   test_plan_id?: string;
   plan: {
+    project_id?: string;
     product_name: string;
     module_name: string;
     objective: string;

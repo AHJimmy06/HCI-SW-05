@@ -155,12 +155,18 @@ export function FindingsSynthesisPage() {
       await findingRepo.saveAll(findingsToSave);
       if (planId) updateTestPlanId(planId);
 
+      const getDashboardPath = () => {
+        const projectId = sessionStorage.getItem('active_project_id');
+        if (projectId) return `/dashboard/project/${projectId}`;
+        return '/dashboard';
+      };
+
       // Navegamos al dashboard PRIMERO para asegurar que el state llegue
-      navigate("/dashboard", { 
+      navigate(getDashboardPath(), {
         replace: true,
-        state: { 
-          successMessage: "¡Misión IHC completada! Los hallazgos están en el tablero." 
-        } 
+        state: {
+          successMessage: "¡Misión IHC completada! Los hallazgos están en el tablero."
+        }
       });
 
       // Limpiamos el draft después de un breve delay para no romper la transición
@@ -492,7 +498,11 @@ export function FindingsSynthesisPage() {
             </div>
 
             <Button
-              onClick={() => { saveDraft(); navigate("/dashboard"); }}
+              onClick={() => {
+                saveDraft();
+                const projectId = sessionStorage.getItem('active_project_id');
+                navigate(projectId ? `/dashboard/project/${projectId}` : '/dashboard');
+              }}
               variant="outline"
               className="group border-2 border-slate-200 text-slate-500 hover:border-primary hover:text-primary px-8 py-4 rounded-2xl transition-all flex items-center gap-3 font-bold bg-white"
             >

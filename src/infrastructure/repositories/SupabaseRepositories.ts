@@ -69,7 +69,73 @@ export class SupabaseTestPlanRepository implements ITestPlanRepository {
     return data;
   }
 
-  async getAllMetrics(): Promise<DashboardMetrics[]> {
+  async getAllMetrics(projectId?: string): Promise<DashboardMetrics[]> {
+    // If projectId is provided, query directly without relying on the RLS-filtered view
+    if (projectId) {
+      const { data, error } = await supabase
+        .from('test_plans')
+        .select(`
+          id,
+          product_name,
+          module_name,
+          test_date,
+          created_at,
+          project_id
+        `)
+        .eq('project_id', projectId)
+        .is('deleted_at', null)
+        .order('test_date', { ascending: false });
+
+      if (error) throw new Error(error.message);
+
+      // Get observation counts per plan
+      const planIds = (data || []).map(p => p.id);
+      let observationCounts: Record<string, number> = {};
+      let taskSuccessCounts: Record<string, number> = {};
+      let errorCounts: Record<string, number> = {};
+      let timeSums: Record<string, number> = {};
+
+      if (planIds.length > 0) {
+        const { data: obs } = await supabase
+          .from('observations')
+          .select('test_plan_id, success, time_seconds, errors_count')
+          .in('test_plan_id', planIds);
+
+        if (obs) {
+          obs.forEach(o => {
+            const tid = o.test_plan_id;
+            observationCounts[tid] = (observationCounts[tid] || 0) + 1;
+            if (o.success) taskSuccessCounts[tid] = (taskSuccessCounts[tid] || 0) + 1;
+            errorCounts[tid] = (errorCounts[tid] || 0) + (o.errors_count || 0);
+            timeSums[tid] = (timeSums[tid] || 0) + (o.time_seconds || 0);
+          });
+        }
+      }
+
+      const metrics: DashboardMetrics[] = (data || []).map(p => {
+        const totalObs = observationCounts[p.id] || 0;
+        const successes = taskSuccessCounts[p.id] || 0;
+        const totalErrors = errorCounts[p.id] || 0;
+        const totalTime = timeSums[p.id] || 0;
+        const successRate = totalObs > 0 ? Math.round((successes / totalObs) * 10000) / 100 : 0;
+
+        return {
+          test_plan_id: p.id,
+          product_name: p.product_name + (p.module_name ? ` : ${p.module_name}` : ''),
+          test_date: p.test_date || new Date(p.created_at).toISOString().split('T')[0],
+          total_observations: totalObs,
+          successful_tasks: successes,
+          avg_time_seconds: totalObs > 0 ? Math.round(totalTime / totalObs) : 0,
+          total_errors: totalErrors,
+          success_rate: successRate,
+          project_id: p.project_id
+        };
+      });
+
+      return metrics;
+    }
+
+    // Default: use the RLS-filtered view for general dashboard
     const { data, error } = await supabase
       .from('dashboard_metrics')
       .select('*')
