@@ -17,6 +17,7 @@ const OrganizationsPage = lazy(() => import("../pages/OrganizationsPage").then(m
 const OrganizationDetailPage = lazy(() => import("../pages/OrganizationDetailPage").then(m => ({ default: m.OrganizationDetailPage })));
 const JoinRequestsPage = lazy(() => import("../pages/JoinRequestsPage").then(m => ({ default: m.JoinRequestsPage })));
 const ProjectDetailPage = lazy(() => import("../pages/ProjectDetailPage").then(m => ({ default: m.ProjectDetailPage })));
+const TestPlanDetailPage = lazy(() => import("../pages/TestPlanDetailPage").then(m => ({ default: m.TestPlanDetailPage })));
 
 function PageLoader() {
   return (
@@ -78,6 +79,7 @@ export function AppRouter() {
             <Route path="organizations/:orgId" element={<OrganizationDetailPage />} />
             <Route path="organizations/:orgId/projects/:projectId" element={<ProjectDetailPage />} />
             <Route path="project/:projectId" element={<DashboardPage />} />
+            <Route path="test-plan/:testPlanId" element={<TestPlanDetailPage />} />
             <Route path="join-requests" element={<JoinRequestsPage />} />
           </Route>
 
