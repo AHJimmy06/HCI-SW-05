@@ -17,7 +17,7 @@ import { AutoSaveIndicator } from "../components/layout/AutoSaveIndicator";
 export function TestPlanFormPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { data, updatePlan, updateTasks, addTask, deleteTask, attemptedNext, isDraftSaved, lastSaved } = useTestPlan();
+  const { data, updatePlan, updateTasks, addTask, deleteTask, attemptedNext, isDraftSaved, lastSaved, hasDraft, clearDraft } = useTestPlan();
   const { user } = useAuth();
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [projects, setProjects] = useState<Project[]>([]);
