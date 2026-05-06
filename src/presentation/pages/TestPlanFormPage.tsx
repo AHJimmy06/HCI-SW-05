@@ -23,17 +23,25 @@ export function TestPlanFormPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [blocked, setBlocked] = useState(false);
 
-  // Check for project context on mount
+  // Check for project context on mount and validate draft projectId
   useEffect(() => {
-    const projectId = searchParams.get('project') || sessionStorage.getItem('active_project_id');
-    if (!projectId) {
+    const contextProjectId = searchParams.get('project') || sessionStorage.getItem('active_project_id');
+    if (!contextProjectId) {
       setBlocked(true);
       return;
     }
-    if (!data.plan.project_id) {
-      updatePlan('project_id', projectId);
+
+    // Validate draft: if draft exists with DIFFERENT project_id than current context, clear it
+    if (hasDraft && data.plan.project_id && data.plan.project_id !== contextProjectId) {
+      clearDraft();
+      setBlocked(true);
+      return;
     }
-  }, []);
+
+    if (!data.plan.project_id) {
+      updatePlan('project_id', contextProjectId);
+    }
+  }, [hasDraft, data.plan.project_id, searchParams, updatePlan, clearDraft]);
 
   useEffect(() => {
     const loadProjects = async () => {

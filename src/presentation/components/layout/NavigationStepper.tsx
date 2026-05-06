@@ -38,13 +38,17 @@ export function NavigationStepper() {
     const stepIndex = steps.findIndex(s => s.id === stepId);
     const currentIndex = steps.findIndex(s => s.id === currentStep);
 
+    // Derive projectId from sessionStorage and inject as query param
+    const projectId = sessionStorage.getItem('active_project_id');
+    const targetPath = projectId ? `${path}?project=${projectId}` : path;
+
     if (stepIndex <= currentIndex) {
-      navigate(path);
+      navigate(targetPath);
     } else {
       // To navigate forward, previous step must be valid
       const prevStep = steps[stepIndex - 1];
       if (validationStatus[prevStep.id].isValid) {
-        navigate(path);
+        navigate(targetPath);
       }
     }
   };

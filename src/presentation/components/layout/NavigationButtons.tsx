@@ -52,7 +52,9 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
 
   const getTargetPath = (step: typeof steps[0]) => {
     if (step.id === 'dashboard') return getDashboardPath();
-    return step.path;
+    // For wizard steps, inject projectId as query param
+    const projectId = sessionStorage.getItem('active_project_id');
+    return projectId ? `${step.path}?project=${projectId}` : step.path;
   };
 
   const handleNextClick = () => {

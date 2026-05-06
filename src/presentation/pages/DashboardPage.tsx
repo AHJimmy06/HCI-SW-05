@@ -474,6 +474,8 @@ export function DashboardPage() {
 
   const handleNewPlan = () => {
     resetData();
+    // Clear any stale project context to prevent cross-project pollution
+    sessionStorage.removeItem('active_project_id');
     navigate("/dashboard/plan");
   };
 

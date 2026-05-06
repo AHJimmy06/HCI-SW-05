@@ -272,12 +272,19 @@ navigate('/dashboard/plan', { replace: true });
                 ].map((item) => {
                   const disabled = !canNavigateTo(item.step as any);
                   const Icon = item.icon;
+                  // Plan del Test gets ?project= query param when in project context
+                  const getItemPath = () => {
+                    if (item.step === 'plan' && currentProjectId) {
+                      return `/dashboard/plan?project=${currentProjectId}`;
+                    }
+                    return item.to;
+                  };
                   return (
                     <NavLink
                       key={item.to}
-                      to={disabled ? location.pathname : item.to}
-                      onClick={(e) => { if (disabled) e.preventDefault(); }}
-                      className={({ isActive }) =>
+                      to={disabled ? location.pathname : getItemPath()}
+                    onClick={(e) => { if (disabled) e.preventDefault(); }}
+                    className={({ isActive }) =>
                         `inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                           disabled
                             ? "opacity-40 cursor-not-allowed text-slate-500"
