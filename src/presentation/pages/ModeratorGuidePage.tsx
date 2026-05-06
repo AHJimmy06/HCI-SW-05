@@ -42,7 +42,11 @@ export function ModeratorGuidePage() {
 
   const handleStartNow = () => {
     updatePlan('test_date', new Date().toISOString().split('T')[0]);
-    navigate("/dashboard/registro");
+    // Preserve projectId via query param
+    const projectId = sessionStorage.getItem('active_project_id');
+    const targetPath = projectId ? `/dashboard/registro?project=${projectId}` : '/dashboard/registro';
+    sessionStorage.setItem('active_project_id', projectId || '');
+    navigate(targetPath);
   };
 
   const handleNextStep = () => {
@@ -380,7 +384,11 @@ export function ModeratorGuidePage() {
             </div>
           )}
 
-          <Button variant="ghost" onClick={() => navigate("/dashboard/plan")} className="flex items-center gap-2 px-6 py-6 rounded-xl font-semibold hover:bg-slate-100 transition-all text-slate-700">
+          <Button variant="ghost" onClick={() => {
+              const projectId = sessionStorage.getItem('active_project_id');
+              const targetPath = projectId ? `/dashboard/plan?project=${projectId}` : '/dashboard/plan';
+              navigate(targetPath);
+            }} className="flex items-center gap-2 px-6 py-6 rounded-xl font-semibold hover:bg-slate-100 transition-all text-slate-700">
             <ChevronLeft size={20} />
             <div className="flex flex-col items-start"><span className="text-xs uppercase font-bold text-slate-500">Regresar</span><span className="font-bold uppercase text-slate-900">Planificación</span></div>
           </Button>

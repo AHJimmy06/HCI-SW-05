@@ -110,6 +110,7 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
 
   const clearDraft = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem('active_project_id');
     setData(initialData);
     setHasDraft(false);
     setIsDirty(false);
