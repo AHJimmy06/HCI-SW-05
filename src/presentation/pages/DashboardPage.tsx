@@ -375,9 +375,14 @@ export function DashboardPage() {
       const repo = new SupabaseTestPlanRepository();
       const details = await repo.getFullPlan(planId);
       
+      if (details.project_id) {
+        sessionStorage.setItem('active_project_id', details.project_id);
+      }
+
       const mappedData: FullTestData = {
         test_plan_id: planId,
         plan: {
+          project_id: details.project_id || '',
           product_name: details.product_name || '',
           module_name: details.module_name || '',
           objective: details.objective || '',
@@ -450,7 +455,10 @@ export function DashboardPage() {
       };
       
       loadFullPlan(mappedData);
-      navigate(targetRoute);
+      const navigatePath = details.project_id 
+        ? `${targetRoute}?project=${details.project_id}` 
+        : targetRoute;
+      navigate(navigatePath);
     } catch (err) {
       console.error("Error al cargar para editar", err);
     }
@@ -474,9 +482,13 @@ export function DashboardPage() {
 
   const handleNewPlan = () => {
     resetData();
-    // Clear any stale project context to prevent cross-project pollution
-    sessionStorage.removeItem('active_project_id');
-    navigate("/dashboard/plan");
+    if (projectId) {
+      sessionStorage.setItem('active_project_id', projectId);
+      navigate(`/dashboard/plan?project=${projectId}`);
+    } else {
+      sessionStorage.removeItem('active_project_id');
+      navigate("/dashboard/plan");
+    }
   };
 
   return (
