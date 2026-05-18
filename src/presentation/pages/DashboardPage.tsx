@@ -579,53 +579,27 @@ export function DashboardPage() {
 
       <div className="p-6 space-y-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-4">
-          <div className="w-full md:w-auto">
-            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.35em] text-slate-400">Vista del archivo</p>
-            <div className="inline-grid grid-cols-1 sm:grid-cols-2 gap-3 p-2 bg-slate-50 rounded-3xl border border-slate-200 shadow-sm" role="tablist" aria-label="Estados de misiones">
-              <button 
-                onClick={() => setActiveTab("executed")}
-                role="tab"
-                aria-selected={activeTab === "executed"}
-                className={`px-5 py-4 rounded-2xl text-sm font-bold transition-all flex items-center gap-3 min-w-[240px] justify-start text-left ${activeTab === "executed" ? "bg-white text-primary shadow-lg ring-2 ring-primary/20 border border-primary/20" : "bg-transparent text-slate-500 hover:text-slate-800"}`}
-              >
-                <span className={`h-10 w-10 rounded-xl flex items-center justify-center ${activeTab === "executed" ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-500"}`}>
-                  <TrendingUp size={18} />
-                </span>
-                <span className="flex flex-col leading-tight">
-                  <span className="flex items-center gap-2">
-                    <span>Misiones ejecutadas</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === "executed" ? "bg-primary text-white" : "bg-slate-200 text-slate-500"}`}>
-                      {executedPlans.length}
-                    </span>
-                  </span>
-                  <span className="text-[11px] font-medium text-slate-500">Ya tienen métricas, hallazgos y PDF.</span>
-                </span>
-              </button>
-              <button 
-                onClick={() => setActiveTab("planned")}
-                role="tab"
-                aria-selected={activeTab === "planned"}
-                className={`px-5 py-4 rounded-2xl text-sm font-bold transition-all flex items-center gap-3 min-w-[240px] justify-start text-left ${activeTab === "planned" ? "bg-white text-primary shadow-lg ring-2 ring-primary/20 border border-primary/20" : "bg-transparent text-slate-500 hover:text-slate-800"}`}
-              >
-                <span className={`h-10 w-10 rounded-xl flex items-center justify-center ${activeTab === "planned" ? "bg-amber-100 text-amber-600" : "bg-slate-100 text-slate-500"}`}>
-                  <Clock size={18} />
-                </span>
-                <span className="flex flex-col leading-tight">
-                  <span className="flex items-center gap-2">
-                    <span>Planificadas</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === "planned" ? "bg-primary text-white" : "bg-slate-200 text-slate-500"}`}>
-                      {plannedPlans.length}
-                    </span>
-                  </span>
-                  <span className="text-[11px] font-medium text-slate-500">Pendientes de arrancar el flujo.</span>
-                </span>
-              </button>
-            </div>
-            <p className={`mt-3 text-xs font-semibold ${activeTab === "executed" ? "text-primary" : "text-amber-700"}`}>
-              {activeTab === "executed"
-                ? "Missions ya registradas con métricas, hallazgos y PDF disponible."
-                : "Planes listos para continuar al flujo de registro y síntesis."}
-            </p>
+          <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-fit">
+            <button 
+              onClick={() => setActiveTab("executed")}
+              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === "executed" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            >
+              <TrendingUp size={16} />
+              Misiones Ejecutadas
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === "executed" ? "bg-primary text-white" : "bg-slate-200 text-slate-500"}`}>
+                {executedPlans.length}
+              </span>
+            </button>
+            <button 
+              onClick={() => setActiveTab("planned")}
+              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === "planned" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            >
+              <Clock size={16} />
+              Planificadas
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === "planned" ? "bg-primary text-white" : "bg-slate-200 text-slate-500"}`}>
+                {plannedPlans.length}
+              </span>
+            </button>
           </div>
           
           <div className="bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
