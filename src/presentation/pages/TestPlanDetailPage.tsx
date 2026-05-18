@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { SupabaseTestPlanRepository } from "../../infrastructure/repositories/SupabaseRepositories";
 import { SupabaseOrganizationMemberRepository, SupabaseProjectRepository } from "../../infrastructure/repositories/CollaborationRepositories";
 import type { FullTestPlan, Finding, Observation, Task, Participant, SprintBacklogCSV } from "../../domain/entities/types";
@@ -29,6 +29,9 @@ export function TestPlanDetailPage() {
   const [sprintBacklog, setSprintBacklog] = useState<SprintBacklogCSV | null>(null);
   const [showBacklogModal, setShowBacklogModal] = useState(false);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+  const [projectInfo, setProjectInfo] = useState<any | null>(null);
+  const [findingsPriorityFilter, setFindingsPriorityFilter] = useState<string>("Todos");
+  const [findingsStatusFilter, setFindingsStatusFilter] = useState<string>("Todos");
 
   const handleGenerateSprintBacklog = async () => {
     if (!plan || !user) return;
@@ -107,6 +110,12 @@ export function TestPlanDetailPage() {
   const participants: Participant[] = plan?.participants || [];
   const findings: Finding[] = plan?.findings || [];
 
+  const filteredFindings = findings.filter((f: Finding) => {
+    const byPriority = findingsPriorityFilter === 'Todos' || f.priority === findingsPriorityFilter;
+    const byStatus = findingsStatusFilter === 'Todos' || f.status === findingsStatusFilter;
+    return byPriority && byStatus;
+  });
+
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-slate-50">
@@ -164,7 +173,17 @@ export function TestPlanDetailPage() {
             </div>
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <span className="px-3 py-1 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider rounded-full border border-primary/20">
-                Ejecutado
+                {(() => {
+                  // Compute basic plan state: Borrador / Activo / Completado
+                  if ((!plan?.tasks || plan.tasks.length === 0) && (!plan?.participants || plan.participants.length === 0)) return 'Borrador';
+                  if (!plan?.test_date) return 'Activo';
+                  const testDate = new Date(plan.test_date).setHours(0,0,0,0);
+                  const today = new Date().setHours(0,0,0,0);
+                  if (testDate > today) return 'Activo';
+                  // past or today
+                  if ((plan.findings && plan.findings.length > 0) || (plan.observations && plan.observations.length > 0)) return 'Completado';
+                  return 'Activo';
+                })()}
               </span>
               {plan.findings && plan.findings.length > 0 && (
                 sprintBacklog ? (
@@ -201,6 +220,25 @@ export function TestPlanDetailPage() {
           </div>
         </div>
       </header>
+
+      {/* Breadcrumb */}
+      <div className="bg-slate-50 border-b border-slate-100">
+        <div className="max-w-6xl mx-auto px-6 py-3 text-sm text-slate-500">
+          <nav className="flex items-center gap-2">
+            <Link to="/dashboard" className="hover:underline">Dashboard</Link>
+            <span className="text-slate-300">/</span>
+            <Link to="/dashboard/organizations" className="hover:underline">Organizaciones</Link>
+            {plan.project_id && (
+              <>
+                <span className="text-slate-300">/</span>
+                <Link to={`/dashboard/project/${plan.project_id}`} className="hover:underline">Proyecto</Link>
+              </>
+            )}
+            <span className="text-slate-300">/</span>
+            <span className="text-slate-600 font-semibold truncate">{plan.product_name}</span>
+          </nav>
+        </div>
+      </div>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
         {/* ISO 9241-11 Dimension Headers */}
@@ -378,14 +416,30 @@ export function TestPlanDetailPage() {
 
           {/* Findings */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <h3 className="font-semibold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
-              <ClipboardList size={16} /> Hallazgos ({findings.length})
-            </h3>
-            {findings.length === 0 ? (
-              <p className="text-sm text-slate-500 text-center py-8">Sin hallazgos registrados.</p>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-slate-900 border-b border-slate-100 pb-2 flex items-center gap-2">
+                <ClipboardList size={16} /> Hallazgos ({filteredFindings.length})
+              </h3>
+              <div className="flex items-center gap-2">
+                <select value={findingsPriorityFilter} onChange={e => setFindingsPriorityFilter(e.target.value)} className="text-sm p-2 border rounded-md bg-white">
+                  <option>Todos</option>
+                  <option>Alta</option>
+                  <option>Media</option>
+                  <option>Baja</option>
+                </select>
+                <select value={findingsStatusFilter} onChange={e => setFindingsStatusFilter(e.target.value)} className="text-sm p-2 border rounded-md bg-white">
+                  <option>Todos</option>
+                  <option>Pendiente</option>
+                  <option>En Progreso</option>
+                  <option>Resuelto</option>
+                </select>
+              </div>
+            </div>
+            {filteredFindings.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">Sin hallazgos que coincidan con los filtros.</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {findings.map((f: Finding, fi: number) => (
+                {filteredFindings.map((f: Finding, fi: number) => (
                   <div key={fi} className="p-4 bg-slate-50 rounded-xl text-sm border border-slate-200 shadow-sm">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-slate-900">{f.problem}</span>
