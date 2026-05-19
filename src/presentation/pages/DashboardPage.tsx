@@ -579,27 +579,38 @@ export function DashboardPage() {
 
       <div className="p-6 space-y-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-4">
-          <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200 w-fit">
-            <button 
-              onClick={() => setActiveTab("executed")}
-              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === "executed" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-            >
-              <TrendingUp size={16} />
-              Misiones Ejecutadas
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === "executed" ? "bg-primary text-white" : "bg-slate-200 text-slate-500"}`}>
-                {executedPlans.length}
-              </span>
-            </button>
-            <button 
-              onClick={() => setActiveTab("planned")}
-              className={`px-6 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === "planned" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-            >
-              <Clock size={16} />
-              Planificadas
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] ${activeTab === "planned" ? "bg-primary text-white" : "bg-slate-200 text-slate-500"}`}>
-                {plannedPlans.length}
-              </span>
-            </button>
+          <div className="w-full md:w-auto">
+            <div className="inline-flex p-1 bg-slate-100 rounded-2xl border border-slate-200 shadow-sm" role="tablist" aria-label="Estados de misiones">
+              <button 
+                onClick={() => setActiveTab("executed")}
+                role="tab"
+                aria-selected={activeTab === "executed"}
+                className={`px-5 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 min-w-[220px] justify-center ${activeTab === "executed" ? "bg-white text-primary shadow-md ring-1 ring-primary/10" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                <TrendingUp size={16} />
+                <span>Misiones ejecutadas</span>
+                <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === "executed" ? "bg-primary text-white" : "bg-slate-200 text-slate-500"}`}>
+                  {executedPlans.length}
+                </span>
+              </button>
+              <button 
+                onClick={() => setActiveTab("planned")}
+                role="tab"
+                aria-selected={activeTab === "planned"}
+                className={`px-5 py-3 rounded-xl text-sm font-bold transition-all flex items-center gap-2 min-w-[220px] justify-center ${activeTab === "planned" ? "bg-white text-primary shadow-md ring-1 ring-primary/10" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                <Clock size={16} />
+                <span>Planificadas</span>
+                <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === "planned" ? "bg-primary text-white" : "bg-slate-200 text-slate-500"}`}>
+                  {plannedPlans.length}
+                </span>
+              </button>
+            </div>
+            <p className="mt-3 text-xs text-slate-500 font-medium">
+              {activeTab === "executed"
+                ? "Misiones ya registradas con métricas, hallazgos y PDF disponible."
+                : "Planes listos para continuar al flujo de registro y síntesis."}
+            </p>
           </div>
           
           <div className="bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">

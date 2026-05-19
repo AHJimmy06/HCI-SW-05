@@ -32,3 +32,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+AGENTS.md
+.agent/skills/agent-customization/SKILL.md
+.github/copilot-instructions.md
