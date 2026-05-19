@@ -29,7 +29,6 @@ export function TestPlanDetailPage() {
   const [sprintBacklog, setSprintBacklog] = useState<SprintBacklogCSV | null>(null);
   const [showBacklogModal, setShowBacklogModal] = useState(false);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
-  const [projectInfo, setProjectInfo] = useState<any | null>(null);
   const [findingsPriorityFilter, setFindingsPriorityFilter] = useState<string>("Todos");
   const [findingsStatusFilter, setFindingsStatusFilter] = useState<string>("Todos");
 
