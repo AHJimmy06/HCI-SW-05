@@ -420,13 +420,23 @@ export function TestPlanDetailPage() {
                 <ClipboardList size={16} /> Hallazgos ({filteredFindings.length})
               </h3>
               <div className="flex items-center gap-2">
-                <select value={findingsPriorityFilter} onChange={e => setFindingsPriorityFilter(e.target.value)} className="text-sm p-2 border rounded-md bg-white">
+                <select
+                  aria-label="Filtrar hallazgos por prioridad"
+                  value={findingsPriorityFilter}
+                  onChange={e => setFindingsPriorityFilter(e.target.value)}
+                  className="text-sm p-2 border rounded-md bg-white"
+                >
                   <option>Todos</option>
                   <option>Alta</option>
                   <option>Media</option>
                   <option>Baja</option>
                 </select>
-                <select value={findingsStatusFilter} onChange={e => setFindingsStatusFilter(e.target.value)} className="text-sm p-2 border rounded-md bg-white">
+                <select
+                  aria-label="Filtrar hallazgos por estado"
+                  value={findingsStatusFilter}
+                  onChange={e => setFindingsStatusFilter(e.target.value)}
+                  className="text-sm p-2 border rounded-md bg-white"
+                >
                   <option>Todos</option>
                   <option>Pendiente</option>
                   <option>En Progreso</option>
