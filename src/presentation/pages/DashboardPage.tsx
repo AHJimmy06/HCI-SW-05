@@ -608,7 +608,7 @@ export function DashboardPage() {
             </div>
             <p className="mt-3 text-xs text-slate-500 font-medium">
               {activeTab === "executed"
-                ? "Missions ya registradas con métricas, hallazgos y PDF disponible."
+                ? "Misiones ya registradas con métricas, hallazgos y PDF disponible."
                 : "Planes listos para continuar al flujo de registro y síntesis."}
             </p>
           </div>
