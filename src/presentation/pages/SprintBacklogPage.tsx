@@ -90,6 +90,8 @@ export function SprintBacklogPage() {
 
     let md = `# Sprint Backlog: ${backlog.sprint_nombre}\n\n`;
     md += `**Objetivo:** ${backlog.objetivo_sprint}\n\n`;
+    md += `**Duración:** ${backlog.duracion_sprint_dias ?? 14} días\n\n`;
+    md += `**Notas de Organización:**\n${backlog.notas_organizacion || "N/A"}\n\n`;
     
     md += `## Historias de Usuario\n\n`;
     backlog.historias_usuario.forEach(us => {
@@ -151,7 +153,24 @@ export function SprintBacklogPage() {
     const objectiveLines = doc.splitTextToSize(backlog.objetivo_sprint, pageWidth - 40);
     doc.text(objectiveLines, 20, 72);
 
-    let currentY = 72 + (objectiveLines.length * 7) + 10;
+    let currentY = 72 + (objectiveLines.length * 7) + 5;
+
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Duración estimada: ${backlog.duracion_sprint_dias ?? 14} días`, 20, currentY);
+    currentY += 8;
+
+    if (backlog.notas_organizacion) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Notas de Organización:", 20, currentY);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(71, 85, 105);
+      const notesLines = doc.splitTextToSize(backlog.notas_organizacion, pageWidth - 40);
+      doc.text(notesLines, 20, currentY + 7);
+      currentY += (notesLines.length * 7) + 10;
+    } else {
+      currentY += 5;
+    }
 
     // User Stories Section
     doc.setTextColor(15, 23, 42);
@@ -430,6 +449,27 @@ export function SprintBacklogPage() {
                 value={backlog?.objetivo_sprint || ""} 
                 onChange={(e) => setBacklog(b => b ? { ...b, objetivo_sprint: e.target.value } : null)}
                 className="w-full rounded-xl border-slate-200 border p-3 text-xs font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600">Duración (días)</label>
+              <Input 
+                type="number"
+                value={backlog?.duracion_sprint_dias || 14} 
+                onChange={(e) => setBacklog(b => b ? { ...b, duracion_sprint_dias: parseInt(e.target.value) || 0 } : null)}
+                className="rounded-xl border-slate-200 font-bold"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600">Notas de Organización</label>
+              <textarea 
+                rows={4}
+                value={backlog?.notas_organizacion || ""} 
+                onChange={(e) => setBacklog(b => b ? { ...b, notas_organizacion: e.target.value } : null)}
+                className="w-full rounded-xl border-slate-200 border p-3 text-xs font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
+                placeholder="Asignaciones sugeridas..."
               />
             </div>
 

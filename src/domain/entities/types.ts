@@ -159,6 +159,8 @@ export interface BacklogTask {
 export interface SprintBacklog {
   sprint_nombre: string;
   objetivo_sprint: string;
+  duracion_sprint_dias: number;
+  notas_organizacion: string;
   historias_usuario: BacklogUserStory[];
 }
 

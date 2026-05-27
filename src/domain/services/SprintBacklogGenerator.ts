@@ -2,6 +2,16 @@ import { chatCompletion } from "../../lib/ai";
 import type { FullTestPlan, SprintBacklog, BacklogUserStory, BacklogTask } from "../entities/types";
 
 function buildPrompt(plan: FullTestPlan): string {
+  const tasks = (plan.tasks || [])
+    .map((t, i) => `Tarea ${i + 1} [ID: ${t.task_label}]: ${t.scenario}`)
+    .join("\n");
+
+  const observations = (plan.observations || [])
+    .filter(o => !o.success || o.detected_problem)
+    .slice(0, 10) // Limit to top 10 relevant observations to save context
+    .map(o => `- Problema en ${o.task_id || "tarea desconocida"}: ${o.detected_problem || o.key_comments}`)
+    .join("\n");
+
   const findings = (plan.findings || [])
     .map(
       (f, i) =>
@@ -13,45 +23,52 @@ function buildPrompt(plan: FullTestPlan): string {
     )
     .join("\n\n");
 
-  return `Actúa como un Senior Product Owner y Agile Coach experto en Scrum. Tu misión es transformar hallazgos de pruebas de usabilidad en un Sprint Backlog accionable, profesional y altamente técnico.
+  return `Actúa como un Senior Product Owner y Agile Coach experto en Scrum. Tu misión es transformar un proceso completo de pruebas de usabilidad en un Sprint Backlog accionable y técnico.
 
 CONTEXTO DEL PRODUCTO:
 - Producto: ${plan.product_name}
 - Módulo: ${plan.module_name || "No especificado"}
 - Objetivo del test: ${plan.objective || "No definido"}
-- Perfil de usuario: ${plan.user_profile || "No definido"}
 
-HALLAZGOS DE USABILIDAD (Prioriza según severidad y recomendación):
-${findings || "No se encontraron hallazgos específicos. Genera historias base para mejorar la usabilidad general del módulo."}
+1. GUÍA DE TAREAS (Lo que se evaluó):
+${tasks || "No hay tareas definidas."}
+
+2. REGISTRO DE OBSERVACIONES (Puntos críticos detectados en campo):
+${observations || "No hay observaciones específicas registradas."}
+
+3. SÍNTESIS DE HALLAZGOS (Consolidación de problemas):
+${findings || "Genera historias base para mejorar la usabilidad general del módulo."}
 
 TAREA:
 Genera un objeto JSON que represente el Sprint Backlog. Las Historias de Usuario (US) deben seguir el formato "Como [rol], quiero [acción] para [beneficio]".
 Es CRÍTICO que cada Historia de Usuario incluya su propio desglose de Tareas Técnicas necesarias para su implementación.
+Sugiere una duración de sprint (en días) y notas de organización (asignaciones sugeridas o consideraciones de equipo).
 
 REGLAS DE FORMATO (CRÍTICO):
 1. Responde ÚNICAMENTE con el objeto JSON. SIN texto introductorio, SIN bloques de código markdown, SIN explicaciones.
 2. Cantidad: Entre 3 y 6 Historias de Usuario.
-3. Tareas Técnicas: Cada Historia de Usuario DEBE tener entre 2 y 4 tareas técnicas anidadas que describan el "CÓMO" de la implementación.
+3. Tareas Técnicas: Cada Historia de Usuario DEBE tener entre 2 y 4 tareas técnicas anidadas.
 4. Prioridad: Debe ser "Alta", "Media" o "Baja".
-5. Tipo: Debe ser "feature", "bugfix", "improvement" o "spike".
 
 ESQUEMA JSON REQUERIDO:
 {
   "sprint_nombre": "Sprint 1: [Nombre descriptivo]",
-  "objetivo_sprint": "Breve descripción del objetivo del sprint",
+  "objetivo_sprint": "Breve descripción del objetivo",
+  "duracion_sprint_dias": 14,
+  "notas_organizacion": "Asignaciones sugeridas y notas de equipo",
   "historias_usuario": [
     {
       "id": "US1",
       "titulo": "Título conciso",
       "descripcion": "Como [rol], quiero [acción] para [beneficio]",
-      "criterio_aceptacion": ["Criterio 1", "Criterio 2", "Criterio 3"],
+      "criterio_aceptacion": ["Criterio 1", "Criterio 2"],
       "prioridad": "Alta",
       "esfuerzo": "3 pts",
       "tipo": "feature",
       "tareas_tecnicas": [
         {
           "id": "T1.1",
-          "descripcion": "Descripción de la tarea técnica específica para US1",
+          "descripcion": "Descripción técnica",
           "estimado_horas": 4
         }
       ]
@@ -86,6 +103,8 @@ export async function generateSprintBacklog(plan: FullTestPlan): Promise<SprintB
     return {
       sprint_nombre: parsed.sprint_nombre || "Sprint 1",
       objetivo_sprint: parsed.objetivo_sprint || "",
+      duracion_sprint_dias: parsed.duracion_sprint_dias || 14,
+      notas_organizacion: parsed.notas_organizacion || "",
       historias_usuario: (parsed.historias_usuario || []).map((us: Partial<BacklogUserStory>, i: number) => {
         const storyId = us.id || `US${i + 1}`;
         return {
