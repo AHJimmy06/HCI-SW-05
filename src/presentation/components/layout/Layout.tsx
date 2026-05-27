@@ -64,28 +64,52 @@ function NavContent() {
     loadOrgs();
   }, [user]);
 
-  // Load projects when org changes or route has orgId
+  // DEEP LINK CONTEXT RECOVERY
   useEffect(() => {
-    if (!selectedOrg && params.orgId) {
-      const org = myOrgs.find(o => o.id === params.orgId);
-      if (org) setSelectedOrg(org);
-    }
-    // In project context, load org from project
-    if (!selectedOrg && params.projectId && myOrgs.length > 0) {
-      const loadOrgFromProject = async () => {
+    if (!user || myOrgs.length === 0) return;
+
+    const recoverContext = async () => {
+      let targetProjectId = params.projectId;
+      
+      // If we are in a test plan route, find its project first
+      if (!targetProjectId && params.testPlanId) {
+        const { data: plan } = await supabase
+          .from('test_plans')
+          .select('project_id')
+          .eq('id', params.testPlanId)
+          .single();
+        if (plan) targetProjectId = plan.project_id;
+      }
+
+      if (targetProjectId) {
+        // Find the project and its organization
         const { data: project } = await supabase
           .from('projects')
-          .select('organization_id')
-          .eq('id', params.projectId)
+          .select('*, organizations(*)')
+          .eq('id', targetProjectId)
           .single();
+
         if (project) {
+          // Sync sessionStorage
+          sessionStorage.setItem('active_project_id', project.id);
+          
+          // Sync UI State
           const org = myOrgs.find(o => o.id === project.organization_id);
+          if (org) {
+            setSelectedOrg(org);
+          }
+        }
+      } else {
+        // Fallback to org from URL if no project is involved
+        if (params.orgId && !selectedOrg) {
+          const org = myOrgs.find(o => o.id === params.orgId);
           if (org) setSelectedOrg(org);
         }
-      };
-      loadOrgFromProject();
-    }
-  }, [params.orgId, params.projectId, myOrgs, selectedOrg]);
+      }
+    };
+
+    recoverContext();
+  }, [params.projectId, params.testPlanId, params.orgId, myOrgs, user]);
 
   // Fetch projects for selected org
   useEffect(() => {

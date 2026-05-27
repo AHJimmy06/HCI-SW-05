@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -30,12 +30,22 @@ function PageLoader() {
 
 function ProtectedRoute({ children, requireProject = false }: { children: React.ReactNode; requireProject?: boolean }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
+  
   if (requireProject) {
     // Check if there's a project context in sessionStorage
     const projectId = sessionStorage.getItem('active_project_id');
-    if (!projectId) {
+    // Also check if we're on a route that can recover context (has testPlanId)
+    const hasTestPlanId = location.pathname.includes('/test-plan/view/') || 
+                         location.pathname.includes('/test-plan/guide/') ||
+                         location.pathname.includes('/test-plan/record/') ||
+                         location.pathname.includes('/test-plan/synthesis/') ||
+                         location.pathname.includes('/test-plan/backlog/');
+
+    if (!projectId && !hasTestPlanId) {
       return (
         <div className="flex h-screen w-full items-center justify-center bg-slate-50">
           <div className="text-center max-w-md p-8">
