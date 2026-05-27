@@ -13,7 +13,7 @@ graph TB
         HDR[Header Bar]
         SID[Sidebar Config]
         EDT[Editor Area]
-        TABS[Tabs: Stories | Tasks]
+        TABS[Tabs: Stories or Tasks]
     end
 
     subgraph Domain["Capa de Dominio"]
@@ -175,8 +175,8 @@ graph TD
 
 ```mermaid
 erDiagram
-    SprintBacklog ||--o{ BacklogUserStory : "historias_usuario"
-    BacklogUserStory ||--o{ BacklogTask : "tareas_tecnicas"
+    SprintBacklog "1" o-- "N" BacklogUserStory : contiene
+    BacklogUserStory "1" o-- "N" BacklogTask : desglosa
 
     SprintBacklog {
         string sprint_nombre PK
