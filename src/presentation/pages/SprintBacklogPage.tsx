@@ -254,6 +254,38 @@ export function SprintBacklogPage() {
     setBacklog({ ...backlog, tareas_tecnicas: newTasks });
   };
 
+  const handleAddStory = () => {
+    if (!backlog) return;
+    const newId = `US${backlog.historias_usuario.length + 1}`;
+    const newStory: BacklogUserStory = {
+      id: newId,
+      titulo: "Nueva Historia de Usuario",
+      descripcion: "Como [rol], quiero [acción] para [beneficio]",
+      criterio_aceptacion: ["Criterio 1"],
+      prioridad: "Media",
+      esfuerzo: "1 pt",
+      tipo: "feature"
+    };
+    setBacklog({
+      ...backlog,
+      historias_usuario: [...backlog.historias_usuario, newStory]
+    });
+  };
+
+  const handleAddTask = () => {
+    if (!backlog) return;
+    const newId = `T${backlog.tareas_tecnicas.length + 1}`;
+    const newTask: BacklogTask = {
+      id: newId,
+      descripcion: "Nueva tarea técnica",
+      estimado_horas: 1
+    };
+    setBacklog({
+      ...backlog,
+      tareas_tecnicas: [...backlog.tareas_tecnicas, newTask]
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 gap-4">
@@ -425,92 +457,109 @@ export function SprintBacklogPage() {
               {/* List Content */}
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {activeTab === "stories" ? (
-                  backlog.historias_usuario.map((story) => (
-                    <div 
-                      key={story.id} 
-                      className="group bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-300"
-                    >
-                      <div className="flex items-start justify-between gap-4 mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-md uppercase tracking-widest">{story.id}</span>
-                            <Input 
-                              value={story.titulo} 
-                              onChange={(e) => updateStory(story.id, "titulo", e.target.value)}
-                              className="border-none bg-transparent p-0 h-auto text-lg font-black text-slate-900 focus-visible:ring-0 placeholder:text-slate-300"
-                              placeholder="Título de la historia..."
-                            />
-                          </div>
-                          <textarea 
-                            rows={2}
-                            value={story.descripcion} 
-                            onChange={(e) => updateStory(story.id, "descripcion", e.target.value)}
-                            className="w-full border-none bg-transparent p-0 h-auto text-sm font-medium text-slate-600 focus:outline-none resize-none"
-                            placeholder="Descripción de la historia..."
-                          />
-                        </div>
-
-                        <div className="flex flex-col items-end gap-2">
-                          <Select 
-                            value={story.prioridad} 
-                            onValueChange={(val) => updateStory(story.id, "prioridad", val)}
-                          >
-                            <SelectTrigger className={`h-8 w-24 rounded-full border-none font-bold text-[10px] uppercase tracking-widest ${
-                              story.prioridad === 'Alta' ? 'bg-red-50 text-red-600' : 
-                              story.prioridad === 'Media' ? 'bg-amber-50 text-amber-600' : 
-                              'bg-blue-50 text-blue-600'
-                            }`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Alta">Alta</SelectItem>
-                              <SelectItem value="Media">Media</SelectItem>
-                              <SelectItem value="Baja">Baja</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                            <Clock size={10} />
-                            {story.esfuerzo}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 pt-4 border-t border-slate-50 space-y-3">
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                          <CheckCircle2 size={12} className="text-emerald-500" />
-                          Criterios de Aceptación
-                        </h4>
-                        <div className="space-y-2">
-                          {story.criterio_aceptacion.map((ac, acIdx) => (
-                            <div key={acIdx} className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all">
-                              <div className="h-5 w-5 rounded-md bg-white border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-400">
-                                {acIdx + 1}
-                              </div>
+                  <>
+                    {backlog.historias_usuario.map((story) => (
+                      <div 
+                        key={story.id} 
+                        className="group bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-300"
+                      >
+                        {/* ... (story content remains same) */}
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className="text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-md uppercase tracking-widest">{story.id}</span>
                               <Input 
-                                value={ac}
-                                onChange={(e) => {
-                                  const newAC = [...story.criterio_aceptacion];
-                                  newAC[acIdx] = e.target.value;
-                                  updateStory(story.id, "criterio_aceptacion", newAC);
-                                }}
-                                className="border-none bg-transparent h-6 text-xs font-bold text-slate-700 focus-visible:ring-0 p-0"
+                                value={story.titulo} 
+                                onChange={(e) => updateStory(story.id, "titulo", e.target.value)}
+                                className="border-none bg-transparent p-0 h-auto text-lg font-black text-slate-900 focus-visible:ring-0 placeholder:text-slate-300"
+                                placeholder="Título de la historia..."
                               />
                             </div>
-                          ))}
+                            <textarea 
+                              rows={2}
+                              value={story.descripcion} 
+                              onChange={(e) => updateStory(story.id, "descripcion", e.target.value)}
+                              className="w-full border-none bg-transparent p-0 h-auto text-sm font-medium text-slate-600 focus:outline-none resize-none"
+                              placeholder="Descripción de la historia..."
+                            />
+                          </div>
+
+                          <div className="flex flex-col items-end gap-2">
+                            <Select 
+                              value={story.prioridad} 
+                              onValueChange={(val) => updateStory(story.id, "prioridad", val)}
+                            >
+                              <SelectTrigger className={`h-8 w-24 rounded-full border-none font-bold text-[10px] uppercase tracking-widest ${
+                                story.prioridad === 'Alta' ? 'bg-red-50 text-red-600' : 
+                                story.prioridad === 'Media' ? 'bg-amber-50 text-amber-600' : 
+                                'bg-blue-50 text-blue-600'
+                              }`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Alta">Alta</SelectItem>
+                                <SelectItem value="Media">Media</SelectItem>
+                                <SelectItem value="Baja">Baja</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                              <Clock size={10} />
+                              {story.esfuerzo}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-slate-50 space-y-3">
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <CheckCircle2 size={12} className="text-emerald-500" />
+                            Criterios de Aceptación
+                          </h4>
+                          <div className="space-y-2">
+                            {story.criterio_aceptacion.map((ac, acIdx) => (
+                              <div key={acIdx} className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all">
+                                <div className="h-5 w-5 rounded-md bg-white border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-400">
+                                  {acIdx + 1}
+                                </div>
+                                <Input 
+                                  value={ac}
+                                  onChange={(e) => {
+                                    const newAC = [...story.criterio_aceptacion];
+                                    newAC[acIdx] = e.target.value;
+                                    updateStory(story.id, "criterio_aceptacion", newAC);
+                                  }}
+                                  className="border-none bg-transparent h-6 text-xs font-bold text-slate-700 focus-visible:ring-0 p-0"
+                                />
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+                    <Button 
+                      variant="outline" 
+                      onClick={handleAddStory}
+                      className="w-full h-20 border-2 border-dashed border-slate-200 rounded-3xl hover:border-primary/20 hover:bg-primary/5 text-slate-400 hover:text-primary transition-all flex flex-col items-center justify-center gap-1 group"
+                    >
+                      <Plus className="group-hover:rotate-90 transition-transform" />
+                      <span className="text-xs font-bold uppercase tracking-widest">Añadir Historia de Usuario</span>
+                    </Button>
+                  </>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {backlog.tareas_tecnicas.map((task) => (
                       <div key={task.id} className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm hover:border-primary/20 transition-all group">
                         <div className="flex items-start justify-between mb-3">
                           <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase tracking-widest">{task.id}</span>
-                          <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
-                            <Clock size={10} />
-                            {task.estimado_horas}h
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <Clock size={10} className="text-slate-400" />
+                            <Input 
+                              type="number"
+                              value={task.estimado_horas}
+                              onChange={(e) => updateTask(task.id, "estimado_horas", parseInt(e.target.value) || 0)}
+                              className="w-12 h-6 p-1 text-[10px] font-bold border-none bg-slate-50 rounded-md focus-visible:ring-0"
+                            />
+                            <span className="text-[10px] font-bold text-slate-400">h</span>
+                          </div>
                         </div>
                         <Input 
                           value={task.descripcion} 
@@ -519,7 +568,11 @@ export function SprintBacklogPage() {
                         />
                       </div>
                     ))}
-                    <Button variant="outline" className="h-full min-h-[100px] border-2 border-dashed border-slate-200 rounded-3xl hover:border-primary/20 hover:bg-primary/5 text-slate-400 hover:text-primary transition-all flex flex-col items-center justify-center gap-2 group">
+                    <Button 
+                      variant="outline" 
+                      onClick={handleAddTask}
+                      className="h-full min-h-[100px] border-2 border-dashed border-slate-200 rounded-3xl hover:border-primary/20 hover:bg-primary/5 text-slate-400 hover:text-primary transition-all flex flex-col items-center justify-center gap-2 group"
+                    >
                       <Plus className="group-hover:rotate-90 transition-transform" />
                       <span className="text-xs font-bold uppercase tracking-widest">Añadir Tarea</span>
                     </Button>
