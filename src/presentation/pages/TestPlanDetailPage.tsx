@@ -1,16 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { SupabaseTestPlanRepository } from "../../infrastructure/repositories/SupabaseRepositories";
 import { SupabaseOrganizationMemberRepository, SupabaseProjectRepository } from "../../infrastructure/repositories/CollaborationRepositories";
-import type { FullTestPlan, Finding, Observation, Task, Participant, SprintBacklogCSV } from "../../domain/entities/types";
-import { generateSprintBacklog } from "../../domain/services/SprintBacklogGenerator";
+import type { FullTestPlan, Finding, Observation, Task, Participant, SprintBacklog } from "../../domain/entities/types";
 import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, Target, Zap, Shield, BarChart3,
   TrendingUp, Clock, AlertOctagon, Users, FileText,
   ClipboardList, CheckCircle2, XCircle, Loader2,
-  User, Scissors, AlertTriangle, FileBarChart, Clock3
+  User, Scissors, FileBarChart, Clock3
 } from "lucide-react";
 import { SprintBacklogResult } from "../components/SprintBacklogResult";
 
@@ -18,37 +17,19 @@ export function TestPlanDetailPage() {
   const { testPlanId } = useParams<{ testPlanId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const repo = new SupabaseTestPlanRepository();
-  const projectRepo = new SupabaseProjectRepository();
-  const memberRepo = new SupabaseOrganizationMemberRepository();
+  
+  const repo = useMemo(() => new SupabaseTestPlanRepository(), []);
+  const projectRepo = useMemo(() => new SupabaseProjectRepository(), []);
+  const memberRepo = useMemo(() => new SupabaseOrganizationMemberRepository(), []);
+
   const [plan, setPlan] = useState<FullTestPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const [sprintBacklog, setSprintBacklog] = useState<SprintBacklogCSV | null>(null);
+  const [sprintBacklog, setSprintBacklog] = useState<SprintBacklog | null>(null);
   const [showBacklogModal, setShowBacklogModal] = useState(false);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
   const [findingsPriorityFilter, setFindingsPriorityFilter] = useState<string>("Todos");
   const [findingsStatusFilter, setFindingsStatusFilter] = useState<string>("Todos");
-
-  const handleGenerateSprintBacklog = async () => {
-    if (!plan || !user) return;
-    setIsGenerating(true);
-    setGenerationError(null);
-    try {
-      const backlog = await generateSprintBacklog(plan);
-      // Save to database
-      await repo.saveSprintBacklog(plan.id!, backlog, user.id);
-      setSprintBacklog(backlog);
-      setShowBacklogModal(true);
-    } catch (err) {
-      console.error(err);
-      setGenerationError(err instanceof Error ? err.message : "Error al generar el Sprint Backlog");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   useEffect(() => {
     if (!testPlanId) return;
@@ -85,7 +66,7 @@ export function TestPlanDetailPage() {
       }
     };
     load();
-  }, [testPlanId, user]);
+  }, [testPlanId, user, repo, projectRepo, memberRepo]);
 
   // Calculate metrics from observations
   const observations = plan?.observations || [];
@@ -188,7 +169,7 @@ export function TestPlanDetailPage() {
                 sprintBacklog ? (
                   <Button
                     size="sm"
-                    onClick={() => setShowBacklogModal(true)}
+                    onClick={() => navigate(`/dashboard/test-plan/backlog/${testPlanId}`)}
                     className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 gap-2"
                   >
                     <FileBarChart size={14} />
@@ -197,16 +178,11 @@ export function TestPlanDetailPage() {
                 ) : isOrgAdmin ? (
                   <Button
                     size="sm"
-                    onClick={handleGenerateSprintBacklog}
-                    disabled={isGenerating}
+                    onClick={() => navigate(`/dashboard/test-plan/backlog/${testPlanId}`)}
                     className="bg-slate-900 hover:bg-slate-800 text-white shadow-lg shadow-slate-900/20 gap-2"
                   >
-                    {isGenerating ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Scissors size={14} />
-                    )}
-                    {isGenerating ? "Generando..." : "Generar Sprint Backlog"}
+                    <Scissors size={14} />
+                    Generar Sprint Backlog
                   </Button>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-500 text-xs font-medium rounded-full border border-slate-200">
@@ -504,25 +480,9 @@ export function TestPlanDetailPage() {
         </p>
       </footer>
 
-      {/* Sprint Backlog generation error */}
-      {generationError && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm bg-red-50 border border-red-200 rounded-xl p-4 shadow-xl">
-          <div className="flex items-start gap-3">
-            <AlertTriangle size={16} className="text-red-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-red-800">Error al generar</p>
-              <p className="text-xs text-red-600 mt-0.5">{generationError}</p>
-            </div>
-            <button onClick={() => setGenerationError(null)} className="text-red-400 hover:text-red-600 ml-auto">
-              <XCircle size={14} />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Sprint Backlog Result Modal */}
       <SprintBacklogResult
-        backlog={sprintBacklog}
+        backlog={sprintBacklog as any}
         open={showBacklogModal}
         onClose={() => setShowBacklogModal(false)}
         productName={plan?.product_name || "Producto"}

@@ -1,5 +1,4 @@
-import type { DashboardMetrics, FullTestPlan, Task, Participant, Observation, Finding } from "../entities/types";
-import type { SprintBacklogCSV } from "../entities/types";
+import type { DashboardMetrics, FullTestPlan, Task, Participant, Observation, Finding, SprintBacklog } from "../entities/types";
 
 export interface ITestPlanRepository {
   getAllMetrics(): Promise<DashboardMetrics[]>;
@@ -7,18 +6,10 @@ export interface ITestPlanRepository {
   create(data: Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>): Promise<string>;
   update(id: string, data: Partial<Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>>): Promise<void>;
   delete(id: string): Promise<void>;
-  getSprintBacklog(testPlanId: string): Promise<SprintBacklogCSV | null>;
-  saveSprintBacklog(testPlanId: string, backlog: SprintBacklogCSV, userId: string): Promise<void>;
+  getSprintBacklog(testPlanId: string): Promise<SprintBacklog | null>;
+  saveSprintBacklog(testPlanId: string, backlog: SprintBacklog): Promise<void>;
 }
 import type { Organization, Project, OrganizationMember, MembershipRequest } from "../entities/collaboration";
-
-export interface ITestPlanRepository {
-  getAllMetrics(): Promise<DashboardMetrics[]>;
-  getFullPlan(id: string): Promise<FullTestPlan>;
-  create(data: Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>): Promise<string>;
-  update(id: string, data: Partial<Omit<FullTestPlan, 'id' | 'tasks' | 'participants' | 'observations' | 'findings'>>): Promise<void>;
-  delete(id: string): Promise<void>;
-}
 
 export interface ITaskRepository {
   saveAll(tasks: Partial<Task>[]): Promise<void>;

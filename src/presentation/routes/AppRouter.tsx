@@ -13,6 +13,7 @@ const TestPlanFormPage = lazy(() => import("../pages/TestPlanFormPage").then(m =
 const ModeratorGuidePage = lazy(() => import("../pages/ModeratorGuidePage").then(m => ({ default: m.ModeratorGuidePage })));
 const ObservationRecordPage = lazy(() => import("../pages/ObservationRecordPage").then(m => ({ default: m.ObservationRecordPage })));
 const FindingsSynthesisPage = lazy(() => import("../pages/FindingsSynthesisPage").then(m => ({ default: m.FindingsSynthesisPage })));
+const SprintBacklogPage = lazy(() => import("../pages/SprintBacklogPage").then(m => ({ default: m.SprintBacklogPage })));
 const OrganizationsPage = lazy(() => import("../pages/OrganizationsPage").then(m => ({ default: m.OrganizationsPage })));
 const OrganizationDetailPage = lazy(() => import("../pages/OrganizationDetailPage").then(m => ({ default: m.OrganizationDetailPage })));
 const JoinRequestsPage = lazy(() => import("../pages/JoinRequestsPage").then(m => ({ default: m.JoinRequestsPage })));
@@ -78,6 +79,7 @@ export function AppRouter() {
               <Route path="guide/:testPlanId" element={<ModeratorGuidePage />} />
               <Route path="record/:testPlanId" element={<ObservationRecordPage />} />
               <Route path="synthesis/:testPlanId" element={<FindingsSynthesisPage />} />
+              <Route path="backlog/:testPlanId" element={<SprintBacklogPage />} />
             </Route>
 
             {/* Collaboration & Organization */}
