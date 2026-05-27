@@ -147,6 +147,7 @@ export interface BacklogUserStory {
   prioridad: "Alta" | "Media" | "Baja";
   esfuerzo: string;
   tipo: "feature" | "bugfix" | "improvement" | "spike";
+  tareas_tecnicas: BacklogTask[];
 }
 
 export interface BacklogTask {
@@ -159,7 +160,6 @@ export interface SprintBacklog {
   sprint_nombre: string;
   objetivo_sprint: string;
   historias_usuario: BacklogUserStory[];
-  tareas_tecnicas: BacklogTask[];
 }
 
 // Sprint Backlog CSV format for Notion import

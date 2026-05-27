@@ -50,7 +50,6 @@ export function SprintBacklogPage() {
     try {
       const generated = await generateSprintBacklog(targetPlan);
       setBacklog(generated);
-      // Auto-save initial generation
       if (testPlanId) {
         await repo.saveSprintBacklog(testPlanId, generated);
       }
@@ -74,7 +73,6 @@ export function SprintBacklogPage() {
         if (existingBacklog) {
           setBacklog(existingBacklog);
         } else {
-          // Auto-trigger generation if none exists
           handleGenerate(fullPlan);
         }
       } catch (err) {
@@ -102,14 +100,15 @@ export function SprintBacklogPage() {
       us.criterio_aceptacion.forEach(ac => {
         md += `- [ ] ${ac}\n`;
       });
+      
+      md += `\n**Tareas Técnicas:**\n`;
+      md += `| ID | Descripción | Estimado |\n`;
+      md += `|----|-------------|----------|\n`;
+      us.tareas_tecnicas.forEach(t => {
+        md += `| ${t.id} | ${t.descripcion} | ${t.estimado_horas}h |\n`;
+      });
+      
       md += `\n---\n\n`;
-    });
-
-    md += `## Tareas Técnicas\n\n`;
-    md += `| ID | Descripción | Estimado |\n`;
-    md += `|----|-------------|----------|\n`;
-    backlog.tareas_tecnicas.forEach(t => {
-      md += `| ${t.id} | ${t.descripcion} | ${t.estimado_horas}h |\n`;
     });
 
     const blob = new Blob([md], { type: 'text/markdown' });
@@ -162,14 +161,19 @@ export function SprintBacklogPage() {
     currentY += 10;
 
     backlog.historias_usuario.forEach((us) => {
-      if (currentY > 250) {
+      if (currentY > 220) {
         doc.addPage();
         currentY = 20;
       }
 
-      // Story Card logic in PDF
       doc.setFillColor(248, 250, 252); // slate-50
-      doc.roundedRect(15, currentY - 5, pageWidth - 30, 45, 3, 3, 'F');
+      // Calculate story height dynamically
+      const storyDescLines = doc.splitTextToSize(us.descripcion, pageWidth - 45);
+      const acText = us.criterio_aceptacion.join(" | ");
+      const acLines = doc.splitTextToSize(`AC: ${acText}`, pageWidth - 55);
+      const storyHeight = 35 + (storyDescLines.length * 5) + (acLines.length * 5);
+      
+      doc.roundedRect(15, currentY - 5, pageWidth - 30, storyHeight, 3, 3, 'F');
       
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(11);
@@ -181,10 +185,9 @@ export function SprintBacklogPage() {
       doc.text(`Prioridad: ${us.prioridad} | Esfuerzo: ${us.esfuerzo} | Tipo: ${us.tipo}`, 20, currentY + 12);
 
       doc.setTextColor(51, 65, 85);
-      const descLines = doc.splitTextToSize(us.descripcion, pageWidth - 45);
-      doc.text(descLines, 20, currentY + 20);
+      doc.text(storyDescLines, 20, currentY + 20);
 
-      let acY = currentY + 30 + (descLines.length * 2);
+      let acY = currentY + 20 + (storyDescLines.length * 5) + 5;
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
       doc.text("Criterios de Aceptación:", 20, acY);
@@ -192,35 +195,25 @@ export function SprintBacklogPage() {
       
       us.criterio_aceptacion.forEach((ac, index) => {
         const bullet = `• ${ac}`;
-        const acLines = doc.splitTextToSize(bullet, pageWidth - 55);
-        doc.text(acLines, 25, acY + 5 + (index * 5));
-        acY += (acLines.length * 4);
+        const bulletLines = doc.splitTextToSize(bullet, pageWidth - 55);
+        doc.text(bulletLines, 25, acY + 5 + (index * 5));
+        acY += (bulletLines.length * 4);
       });
 
-      currentY = acY + 15;
-    });
+      // Technical Tasks for this US
+      currentY = acY + 10;
+      autoTable(doc, {
+        startY: currentY,
+        head: [['ID', 'Tarea Técnica (Desglose de US)', 'Horas']],
+        body: us.tareas_tecnicas.map(t => [t.id, t.descripcion, `${t.estimado_horas}h`]),
+        headStyles: { fillColor: [71, 85, 105] }, // slate-600 for sub-tables
+        styles: { fontSize: 8 },
+        margin: { left: 20, right: 20 },
+        theme: 'striped'
+      });
 
-    // Technical Tasks Table
-    if (currentY > 200) {
-      doc.addPage();
-      currentY = 20;
-    } else {
-      currentY += 10;
-    }
-
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("Tareas Técnicas", 20, currentY);
-    currentY += 5;
-
-    autoTable(doc, {
-      startY: currentY,
-      head: [['ID', 'Descripción', 'Estimado']],
-      body: backlog.tareas_tecnicas.map(t => [t.id, t.descripcion, `${t.estimado_horas}h`]),
-      headStyles: { fillColor: [15, 23, 42] },
-      styles: { fontSize: 9 },
-      margin: { left: 20, right: 20 }
+      // @ts-ignore
+      currentY = doc.lastAutoTable.finalY + 15;
     });
 
     doc.save(`backlog-${backlog.sprint_nombre.toLowerCase().replace(/\s+/g, '-')}.pdf`);
@@ -239,7 +232,7 @@ export function SprintBacklogPage() {
     }
   };
 
-  const updateStory = (id: string, field: keyof BacklogUserStory, value: string | string[]) => {
+  const updateStory = (id: string, field: keyof BacklogUserStory, value: any) => {
     if (!backlog) return;
     const newStories = backlog.historias_usuario.map(s => 
       s.id === id ? { ...s, [field]: value } as BacklogUserStory : s
@@ -247,12 +240,18 @@ export function SprintBacklogPage() {
     setBacklog({ ...backlog, historias_usuario: newStories });
   };
 
-  const updateTask = (id: string, field: keyof BacklogTask, value: string | number) => {
+  const updateNestedTask = (storyId: string, taskId: string, field: keyof BacklogTask, value: any) => {
     if (!backlog) return;
-    const newTasks = backlog.tareas_tecnicas.map(t => 
-      t.id === id ? { ...t, [field]: value } as BacklogTask : t
-    );
-    setBacklog({ ...backlog, tareas_tecnicas: newTasks });
+    const newStories = backlog.historias_usuario.map(s => {
+      if (s.id === storyId) {
+        const newTasks = s.tareas_tecnicas.map(t => 
+          t.id === taskId ? { ...t, [field]: value } : t
+        );
+        return { ...s, tareas_tecnicas: newTasks };
+      }
+      return s;
+    });
+    setBacklog({ ...backlog, historias_usuario: newStories });
   };
 
   const handleAddStory = () => {
@@ -265,25 +264,12 @@ export function SprintBacklogPage() {
       criterio_aceptacion: ["Criterio 1"],
       prioridad: "Media",
       esfuerzo: "1 pt",
-      tipo: "feature"
+      tipo: "feature",
+      tareas_tecnicas: [{ id: `T${newId.slice(2)}.1`, descripcion: "Tarea inicial", estimado_horas: 1 }]
     };
     setBacklog({
       ...backlog,
       historias_usuario: [...backlog.historias_usuario, newStory]
-    });
-  };
-
-  const handleAddTask = () => {
-    if (!backlog) return;
-    const newId = `T${backlog.tareas_tecnicas.length + 1}`;
-    const newTask: BacklogTask = {
-      id: newId,
-      descripcion: "Nueva tarea técnica",
-      estimado_horas: 1
-    };
-    setBacklog({
-      ...backlog,
-      tareas_tecnicas: [...backlog.tareas_tecnicas, newTask]
     });
   };
 
@@ -295,12 +281,31 @@ export function SprintBacklogPage() {
     });
   };
 
-  const handleRemoveTask = (id: string) => {
+  const handleAddNestedTask = (storyId: string) => {
     if (!backlog) return;
-    setBacklog({
-      ...backlog,
-      tareas_tecnicas: backlog.tareas_tecnicas.filter(t => t.id !== id)
+    const newStories = backlog.historias_usuario.map(s => {
+      if (s.id === storyId) {
+        const storyNum = s.id.replace(/\D/g, '');
+        const newTaskId = `T${storyNum}.${s.tareas_tecnicas.length + 1}`;
+        return {
+          ...s,
+          tareas_tecnicas: [...s.tareas_tecnicas, { id: newTaskId, descripcion: "Nueva tarea técnica", estimado_horas: 1 }]
+        };
+      }
+      return s;
     });
+    setBacklog({ ...backlog, historias_usuario: newStories });
+  };
+
+  const handleRemoveNestedTask = (storyId: string, taskId: string) => {
+    if (!backlog) return;
+    const newStories = backlog.historias_usuario.map(s => {
+      if (s.id === storyId) {
+        return { ...s, tareas_tecnicas: s.tareas_tecnicas.filter(t => t.id !== taskId) };
+      }
+      return s;
+    });
+    setBacklog({ ...backlog, historias_usuario: newStories });
   };
 
   const handleRemoveAC = (storyId: string, index: number) => {
@@ -325,6 +330,13 @@ export function SprintBacklogPage() {
     });
     setBacklog({ ...backlog, historias_usuario: newStories });
   };
+
+  const consolidatedTasks = useMemo(() => {
+    if (!backlog) return [];
+    return backlog.historias_usuario.flatMap(s => 
+      s.tareas_tecnicas.map(t => ({ ...t, parentStoryId: s.id, parentStoryTitle: s.titulo }))
+    );
+  }, [backlog]);
 
   if (loading) {
     return (
@@ -352,22 +364,17 @@ export function SprintBacklogPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      {/* Top Header - Glassmorphism */}
+      {/* Top Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => navigate(-1)}
-              className="rounded-full hover:bg-slate-100"
-            >
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="rounded-full">
               <ArrowLeft size={20} />
             </Button>
             <div>
               <div className="flex items-center gap-2 mb-0.5">
                 <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[10px] uppercase font-black tracking-widest px-2">
-                  Sprint Backlog AI
+                  Sprint Backlog AI (v2 Nested)
                 </Badge>
                 <span className="text-slate-300 text-xs">/</span>
                 <span className="text-slate-500 text-xs font-bold uppercase tracking-tighter">{plan?.product_name}</span>
@@ -384,165 +391,115 @@ export function SprintBacklogPage() {
               variant="outline"
               onClick={() => handleGenerate(plan!)}
               disabled={isGenerating}
-              className="rounded-xl border-2 border-slate-200 font-bold hover:bg-slate-50 flex items-center gap-2"
+              className="rounded-xl border-2 border-slate-200 font-bold"
             >
-              <Sparkles size={16} className={isGenerating ? "animate-spin text-primary" : "text-primary"} />
-              Regenerar con IA
+              <Sparkles size={16} className={isGenerating ? "animate-spin text-primary mr-2" : "text-primary mr-2"} />
+              Regenerar
             </Button>
             <Button
               onClick={handleSave}
               disabled={isSaving || isGenerating}
-              className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-lg shadow-slate-900/20 px-6 flex items-center gap-2"
+              className="rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold"
             >
-              {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-              {isSaving ? "Guardando..." : "Guardar Cambios"}
+              {isSaving ? <Loader2 size={16} className="animate-spin mr-2" /> : <Save size={16} className="mr-2" />}
+              Guardar Cambios
             </Button>
           </div>
         </div>
       </header>
 
       <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-4 gap-8">
-        {/* Sidebar - Sprint Context */}
-        <aside className="lg:col-span-1 space-y-6">
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm sticky top-24">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Configuración del Sprint</h3>
+        {/* Sidebar */}
+        <aside className="lg:col-span-1">
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm sticky top-24 space-y-5">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Configuración</h3>
             
-            <div className="space-y-5">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-600 ml-1">Nombre del Sprint</label>
-                <Input 
-                  value={backlog?.sprint_nombre || ""} 
-                  onChange={(e) => setBacklog(b => b ? { ...b, sprint_nombre: e.target.value } : null)}
-                  className="rounded-xl border-slate-200 font-bold focus:ring-primary/20"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600">Nombre del Sprint</label>
+              <Input 
+                value={backlog?.sprint_nombre || ""} 
+                onChange={(e) => setBacklog(b => b ? { ...b, sprint_nombre: e.target.value } : null)}
+                className="rounded-xl border-slate-200 font-bold"
+              />
+            </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-600 ml-1">Objetivo del Sprint</label>
-                <textarea 
-                  rows={4}
-                  value={backlog?.objetivo_sprint || ""} 
-                  onChange={(e) => setBacklog(b => b ? { ...b, objetivo_sprint: e.target.value } : null)}
-                  className="w-full rounded-xl border-slate-200 border p-3 text-xs font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
-                  placeholder="Ej: Mejorar la tasa de éxito en el flujo de registro..."
-                />
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-600">Objetivo</label>
+              <textarea 
+                rows={4}
+                value={backlog?.objetivo_sprint || ""} 
+                onChange={(e) => setBacklog(b => b ? { ...b, objetivo_sprint: e.target.value } : null)}
+                className="w-full rounded-xl border-slate-200 border p-3 text-xs font-medium focus:ring-2 focus:ring-primary/20 focus:outline-none resize-none"
+              />
+            </div>
 
-              <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
-                <Button 
-                  variant="ghost" 
-                  onClick={handleExportMarkdown}
-                  className="justify-start gap-2 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-xl font-bold"
-                >
-                  <FileText size={16} />
-                  <span>Exportar Markdown</span>
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={handleExportPDF}
-                  className="justify-start gap-2 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-xl font-bold"
-                >
-                  <Zap size={16} className="text-amber-500" />
-                  <span>Exportar PDF</span>
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  onClick={() => navigate(-1)}
-                  className="justify-start gap-2 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-xl font-bold"
-                >
-                  <LayoutDashboard size={16} />
-                  <span>Regresar</span>
-                </Button>
-              </div>
+            <div className="pt-4 border-t border-slate-100 flex flex-col gap-2">
+              <Button variant="ghost" onClick={handleExportMarkdown} className="justify-start gap-2 text-slate-500 hover:text-primary font-bold">
+                <FileText size={16} /> Exportar Markdown
+              </Button>
+              <Button variant="ghost" onClick={handleExportPDF} className="justify-start gap-2 text-slate-500 hover:text-primary font-bold">
+                <Zap size={16} className="text-amber-500" /> Exportar PDF
+              </Button>
+              <Button variant="ghost" onClick={() => navigate(-1)} className="justify-start gap-2 text-slate-500 hover:text-primary font-bold">
+                <LayoutDashboard size={16} /> Regresar
+              </Button>
             </div>
           </div>
         </aside>
 
-        {/* Main Editor Area */}
+        {/* Editor Area */}
         <section className="lg:col-span-3 space-y-6">
           {isGenerating ? (
-            <div className="h-[600px] bg-white rounded-3xl border-2 border-dashed border-primary/20 flex flex-col items-center justify-center p-12 text-center">
-              <div className="h-20 w-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary mb-6 animate-bounce">
-                <Sparkles size={40} />
-              </div>
-              <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Procesando hallazgos...</h2>
-              <p className="text-slate-500 font-medium max-w-sm">Nuestra IA está traduciendo tus hallazgos de usabilidad en historias de usuario y tareas técnicas accionables.</p>
-              
-              <div className="mt-8 w-64 h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-primary animate-[shimmer_2s_infinite] w-full origin-left" />
-              </div>
-            </div>
+             <div className="h-[500px] flex flex-col items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                <p className="font-bold text-slate-400 uppercase tracking-widest">IA Generando Backlog Anidado...</p>
+             </div>
           ) : backlog ? (
             <>
-              {/* Tabs Selection */}
+              {/* Tabs */}
               <div className="flex items-center gap-1 bg-slate-200/50 p-1.5 rounded-2xl w-max border border-slate-200">
                 <button
                   onClick={() => setActiveTab("stories")}
                   className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${activeTab === "stories" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                 >
-                  <Ticket size={16} />
-                  Historias de Usuario
-                  <Badge className="bg-primary/10 text-primary border-none ml-1">{backlog.historias_usuario.length}</Badge>
+                  <Ticket size={16} /> Historias de Usuario
                 </button>
                 <button
                   onClick={() => setActiveTab("tasks")}
                   className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 ${activeTab === "tasks" ? "bg-white text-primary shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                 >
-                  <Zap size={16} />
-                  Tareas Técnicas
-                  <Badge className="bg-slate-400/10 text-slate-500 border-none ml-1">{backlog.tareas_tecnicas.length}</Badge>
+                  <Zap size={16} /> Vista Consolidada (Tareas)
                 </button>
               </div>
 
-              {/* List Content */}
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {activeTab === "stories" ? (
-                  <>
-                    {backlog.historias_usuario.map((story) => (
-                      <div 
-                        key={story.id} 
-                        className="group bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-xl hover:border-primary/20 transition-all duration-300"
-                      >
-                        {/* ... (story content remains same) */}
-                        <div className="flex items-start justify-between gap-4 mb-4">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-3 mb-2">
-                              <span className="text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-md uppercase tracking-widest">{story.id}</span>
+              {activeTab === "stories" ? (
+                <div className="space-y-6">
+                  {backlog.historias_usuario.map((story) => (
+                    <div key={story.id} className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-all">
+                      {/* Story Header */}
+                      <div className="flex items-start justify-between gap-4 mb-6">
+                        <div className="flex-1 space-y-2">
+                           <div className="flex items-center gap-3">
+                              <Badge className="bg-primary/10 text-primary">{story.id}</Badge>
                               <Input 
                                 value={story.titulo} 
                                 onChange={(e) => updateStory(story.id, "titulo", e.target.value)}
-                                className="border-none bg-transparent p-0 h-auto text-lg font-black text-slate-900 focus-visible:ring-0 placeholder:text-slate-300 flex-1"
-                                placeholder="Título de la historia..."
+                                className="border-none p-0 h-auto text-lg font-black text-slate-900 focus-visible:ring-0 flex-1"
                               />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRemoveStory(story.id)}
-                                className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                                title="Eliminar historia"
-                              >
-                                <Trash2 size={14} />
+                              <Button variant="ghost" size="icon" onClick={() => handleRemoveStory(story.id)} className="text-slate-300 hover:text-red-500">
+                                <Trash2 size={16} />
                               </Button>
-                            </div>
-                            <textarea 
-                              rows={2}
-                              value={story.descripcion} 
-                              onChange={(e) => updateStory(story.id, "descripcion", e.target.value)}
-                              className="w-full border-none bg-transparent p-0 h-auto text-sm font-medium text-slate-600 focus:outline-none resize-none"
-                              placeholder="Descripción de la historia..."
-                            />
-                          </div>
-
-                          <div className="flex flex-col items-end gap-2">
-                            <Select 
-                              value={story.prioridad} 
-                              onValueChange={(val) => updateStory(story.id, "prioridad", val)}
-                            >
-                              <SelectTrigger className={`h-8 w-24 rounded-full border-none font-bold text-[10px] uppercase tracking-widest ${
-                                story.prioridad === 'Alta' ? 'bg-red-50 text-red-600' : 
-                                story.prioridad === 'Media' ? 'bg-amber-50 text-amber-600' : 
-                                'bg-blue-50 text-blue-600'
-                              }`}>
+                           </div>
+                           <textarea 
+                             rows={2}
+                             value={story.descripcion}
+                             onChange={(e) => updateStory(story.id, "descripcion", e.target.value)}
+                             className="w-full border-none bg-transparent p-0 text-sm font-medium text-slate-600 focus:outline-none resize-none"
+                           />
+                        </div>
+                        <div className="flex flex-col items-end gap-2">
+                           <Select value={story.prioridad} onValueChange={(val) => updateStory(story.id, "prioridad", val)}>
+                              <SelectTrigger className="h-8 w-24 rounded-full border-none font-bold text-[10px] uppercase bg-slate-50">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -550,120 +507,122 @@ export function SprintBacklogPage() {
                                 <SelectItem value="Media">Media</SelectItem>
                                 <SelectItem value="Baja">Baja</SelectItem>
                               </SelectContent>
-                            </Select>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                              <Clock size={10} />
-                              {story.esfuerzo}
-                            </span>
-                          </div>
+                           </Select>
+                           <Badge variant="outline" className="text-[10px] font-bold border-slate-200 text-slate-500">
+                              <Clock size={10} className="mr-1" />
+                              {story.tareas_tecnicas.reduce((acc, t) => acc + t.estimado_horas, 0)}h totales
+                           </Badge>
                         </div>
+                      </div>
 
-                        <div className="mt-4 pt-4 border-t border-slate-50 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                              <CheckCircle2 size={12} className="text-emerald-500" />
-                              Criterios de Aceptación
-                            </h4>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleAddAC(story.id)}
-                              className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/5 rounded-md"
-                            >
-                              <Plus size={10} className="mr-1" /> Añadir AC
-                            </Button>
-                          </div>
-                          <div className="space-y-2">
-                            {story.criterio_aceptacion.map((ac, acIdx) => (
-                              <div key={acIdx} className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all group/ac">
-                                <div className="h-5 w-5 rounded-md bg-white border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-400">
-                                  {acIdx + 1}
-                                </div>
-                                <Input 
-                                  value={ac}
-                                  onChange={(e) => {
+                      {/* Acceptance Criteria */}
+                      <div className="space-y-3 mb-6">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <CheckCircle2 size={12} className="text-emerald-500" /> Criterios de Aceptación
+                          </h4>
+                          <Button variant="ghost" size="sm" onClick={() => handleAddAC(story.id)} className="h-6 text-[10px] font-bold text-primary">
+                            <Plus size={10} className="mr-1" /> Añadir AC
+                          </Button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {story.criterio_aceptacion.map((ac, idx) => (
+                            <div key={idx} className="flex items-center gap-2 bg-slate-50/50 p-2 rounded-xl group/ac border border-transparent hover:border-slate-100">
+                               <Input 
+                                 value={ac} 
+                                 onChange={(e) => {
                                     const newAC = [...story.criterio_aceptacion];
-                                    newAC[acIdx] = e.target.value;
+                                    newAC[idx] = e.target.value;
                                     updateStory(story.id, "criterio_aceptacion", newAC);
-                                  }}
-                                  className="border-none bg-transparent h-6 text-xs font-bold text-slate-700 focus-visible:ring-0 p-0 flex-1"
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemoveAC(story.id, acIdx)}
-                                  className="h-6 w-6 opacity-0 group-hover/ac:opacity-100 text-slate-300 hover:text-red-500 transition-all"
-                                >
+                                 }}
+                                 className="border-none bg-transparent h-6 text-xs font-medium text-slate-700 p-0 flex-1 focus-visible:ring-0"
+                               />
+                               <Button variant="ghost" size="icon" onClick={() => handleRemoveAC(story.id, idx)} className="h-6 w-6 opacity-0 group-hover/ac:opacity-100 text-slate-300 hover:text-red-400">
                                   <Trash2 size={12} />
-                                </Button>
-                              </div>
+                               </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Nested Technical Tasks */}
+                      <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 space-y-4">
+                         <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                               <Zap size={12} className="text-amber-500" /> Desglose Técnico (Tareas)
+                            </h4>
+                            <Button size="sm" variant="outline" onClick={() => handleAddNestedTask(story.id)} className="h-7 text-[10px] font-bold bg-white">
+                               <Plus size={12} className="mr-1" /> Nueva Tarea
+                            </Button>
+                         </div>
+                         <div className="grid grid-cols-1 gap-3">
+                            {story.tareas_tecnicas.map((task) => (
+                               <div key={task.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 group/task">
+                                  <Badge variant="outline" className="text-[9px] bg-slate-50 border-none font-bold text-slate-400">{task.id}</Badge>
+                                  <Input 
+                                    value={task.descripcion}
+                                    onChange={(e) => updateNestedTask(story.id, task.id, "descripcion", e.target.value)}
+                                    className="border-none p-0 h-auto text-xs font-bold text-slate-800 flex-1 focus-visible:ring-0"
+                                  />
+                                  <div className="flex items-center gap-2">
+                                     <Input 
+                                       type="number"
+                                       value={task.estimado_horas}
+                                       onChange={(e) => updateNestedTask(story.id, task.id, "estimado_horas", parseInt(e.target.value) || 0)}
+                                       className="w-12 h-7 text-[10px] font-bold text-center bg-slate-50 border-none rounded-md"
+                                     />
+                                     <span className="text-[10px] font-bold text-slate-400">h</span>
+                                     <Button variant="ghost" size="icon" onClick={() => handleRemoveNestedTask(story.id, task.id)} className="h-7 w-7 opacity-0 group-hover/task:opacity-100 text-slate-300 hover:text-red-400">
+                                        <Trash2 size={12} />
+                                     </Button>
+                                  </div>
+                               </div>
                             ))}
-                          </div>
-                        </div>
+                         </div>
                       </div>
-                    ))}
-                    <Button 
-                      variant="outline" 
-                      onClick={handleAddStory}
-                      className="w-full h-20 border-2 border-dashed border-slate-200 rounded-3xl hover:border-primary/20 hover:bg-primary/5 text-slate-400 hover:text-primary transition-all flex flex-col items-center justify-center gap-1 group"
-                    >
-                      <Plus className="group-hover:rotate-90 transition-transform" />
-                      <span className="text-xs font-bold uppercase tracking-widest">Añadir Historia de Usuario</span>
-                    </Button>
-                  </>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {backlog.tareas_tecnicas.map((task) => (
-                      <div key={task.id} className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm hover:border-primary/20 transition-all group relative">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleRemoveTask(task.id)}
-                          className="absolute top-4 right-4 h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 size={14} />
-                        </Button>
-                        <div className="flex items-start justify-between mb-3 pr-8">
-                          <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase tracking-widest">{task.id}</span>
-                          <div className="flex items-center gap-1">
-                            <Clock size={10} className="text-slate-400" />
-                            <Input 
-                              type="number"
-                              value={task.estimado_horas}
-                              onChange={(e) => updateTask(task.id, "estimado_horas", parseInt(e.target.value) || 0)}
-                              className="w-12 h-6 p-1 text-[10px] font-bold border-none bg-slate-50 rounded-md focus-visible:ring-0"
-                            />
-                            <span className="text-[10px] font-bold text-slate-400">h</span>
-                          </div>
-                        </div>
-                        <Input 
-                          value={task.descripcion} 
-                          onChange={(e) => updateTask(task.id, "descripcion", e.target.value)}
-                          className="border-none bg-transparent p-0 h-auto text-sm font-bold text-slate-800 focus-visible:ring-0 w-full"
-                        />
+                    </div>
+                  ))}
+                  <Button variant="outline" onClick={handleAddStory} className="w-full h-20 border-2 border-dashed border-slate-200 rounded-3xl hover:border-primary/20 text-slate-400 hover:text-primary font-bold uppercase tracking-widest gap-2">
+                    <Plus /> Añadir Historia de Usuario
+                  </Button>
+                </div>
+              ) : (
+                <div className="bg-white rounded-3xl border border-slate-200 p-8 text-center space-y-6">
+                   <div className="flex flex-col items-center">
+                      <div className="h-16 w-16 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mb-4">
+                         <Zap size={32} />
                       </div>
-                    ))}
-                    <Button 
-                      variant="outline" 
-                      onClick={handleAddTask}
-                      className="h-full min-h-[100px] border-2 border-dashed border-slate-200 rounded-3xl hover:border-primary/20 hover:bg-primary/5 text-slate-400 hover:text-primary transition-all flex flex-col items-center justify-center gap-2 group"
-                    >
-                      <Plus className="group-hover:rotate-90 transition-transform" />
-                      <span className="text-xs font-bold uppercase tracking-widest">Añadir Tarea</span>
-                    </Button>
-                  </div>
-                )}
-              </div>
+                      <h2 className="text-xl font-black text-slate-900">Vista de Consolidado Técnico</h2>
+                      <p className="text-slate-500 text-sm max-w-md mx-auto">Aquí ves todas las tareas desglosadas por la IA para este sprint. La edición se realiza desde cada Historia de Usuario.</p>
+                   </div>
+                   <div className="grid grid-cols-1 gap-4 text-left">
+                      {consolidatedTasks.map((task) => (
+                         <div key={task.id} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 group">
+                            <div className="flex items-center gap-4">
+                               <Badge className="bg-slate-200 text-slate-600 border-none">{task.id}</Badge>
+                               <div>
+                                  <p className="text-sm font-bold text-slate-800">{task.descripcion}</p>
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Origen: {task.parentStoryId} - {task.parentStoryTitle}</p>
+                               </div>
+                            </div>
+                            <Badge variant="outline" className="font-bold border-slate-200 text-slate-500">
+                               {task.estimado_horas}h
+                            </Badge>
+                         </div>
+                      ))}
+                   </div>
+                </div>
+              )}
             </>
           ) : (
-            <div className="h-[600px] flex items-center justify-center">
+            <div className="h-[400px] flex items-center justify-center">
                <p className="text-slate-400 font-bold uppercase tracking-widest">Sin datos de backlog</p>
             </div>
           )}
         </section>
       </main>
 
-      <footer className="mt-auto px-6 py-8 border-t border-slate-200/60 bg-white flex items-center justify-center">
+      <footer className="py-8 border-t border-slate-200/60 bg-white flex items-center justify-center">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">Laboratorio de Inteligencia de Diseño IHC</p>
       </footer>
     </div>

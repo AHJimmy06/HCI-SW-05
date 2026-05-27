@@ -13,7 +13,7 @@ function buildPrompt(plan: FullTestPlan): string {
     )
     .join("\n\n");
 
-  return `Actúa como un Senior Product Owner y Agile Coach experto en Scrum. Tu misión es transformar hallazgos de pruebas de usabilidad en un Sprint Backlog accionable y profesional.
+  return `Actúa como un Senior Product Owner y Agile Coach experto en Scrum. Tu misión es transformar hallazgos de pruebas de usabilidad en un Sprint Backlog accionable, profesional y altamente técnico.
 
 CONTEXTO DEL PRODUCTO:
 - Producto: ${plan.product_name}
@@ -26,12 +26,14 @@ ${findings || "No se encontraron hallazgos específicos. Genera historias base p
 
 TAREA:
 Genera un objeto JSON que represente el Sprint Backlog. Las Historias de Usuario (US) deben seguir el formato "Como [rol], quiero [acción] para [beneficio]".
+Es CRÍTICO que cada Historia de Usuario incluya su propio desglose de Tareas Técnicas necesarias para su implementación.
 
 REGLAS DE FORMATO (CRÍTICO):
 1. Responde ÚNICAMENTE con el objeto JSON. SIN texto introductorio, SIN bloques de código markdown, SIN explicaciones.
-2. Cantidad: Entre 3 y 6 Historias de Usuario, y las tareas técnicas necesarias para implementarlas.
-3. Prioridad: Debe ser "Alta", "Media" o "Baja".
-4. Tipo: Debe ser "feature", "bugfix", "improvement" o "spike".
+2. Cantidad: Entre 3 y 6 Historias de Usuario.
+3. Tareas Técnicas: Cada Historia de Usuario DEBE tener entre 2 y 4 tareas técnicas anidadas que describan el "CÓMO" de la implementación.
+4. Prioridad: Debe ser "Alta", "Media" o "Baja".
+5. Tipo: Debe ser "feature", "bugfix", "improvement" o "spike".
 
 ESQUEMA JSON REQUERIDO:
 {
@@ -45,14 +47,14 @@ ESQUEMA JSON REQUERIDO:
       "criterio_aceptacion": ["Criterio 1", "Criterio 2", "Criterio 3"],
       "prioridad": "Alta",
       "esfuerzo": "3 pts",
-      "tipo": "feature"
-    }
-  ],
-  "tareas_tecnicas": [
-    {
-      "id": "T1",
-      "descripcion": "Descripción de la tarea técnica",
-      "estimado_horas": 4
+      "tipo": "feature",
+      "tareas_tecnicas": [
+        {
+          "id": "T1.1",
+          "descripcion": "Descripción de la tarea técnica específica para US1",
+          "estimado_horas": 4
+        }
+      ]
     }
   ]
 }`;
@@ -66,7 +68,7 @@ export async function generateSprintBacklog(plan: FullTestPlan): Promise<SprintB
       temperature: 0.3,
       max_tokens: 8192,
       system:
-        "Eres un Product Owner experto en Scrum. Generas Sprint Backlogs exclusivamente en formato JSON estricto. No incluyas explicaciones ni bloques de código.",
+        "Eres un Product Owner experto en Scrum. Generas Sprint Backlogs exclusivamente en formato JSON estricto con tareas técnicas anidadas dentro de cada historia de usuario. No incluyas explicaciones ni bloques de código.",
     }
   );
 
@@ -84,20 +86,23 @@ export async function generateSprintBacklog(plan: FullTestPlan): Promise<SprintB
     return {
       sprint_nombre: parsed.sprint_nombre || "Sprint 1",
       objetivo_sprint: parsed.objetivo_sprint || "",
-      historias_usuario: (parsed.historias_usuario || []).map((us: Partial<BacklogUserStory>, i: number) => ({
-        id: us.id || `US${i + 1}`,
-        titulo: us.titulo || "Sin título",
-        descripcion: us.descripcion || "",
-        criterio_aceptacion: Array.isArray(us.criterio_aceptacion) ? us.criterio_aceptacion : [],
-        prioridad: (us.prioridad && ["Alta", "Media", "Baja"].includes(us.prioridad)) ? us.prioridad : "Media",
-        esfuerzo: us.esfuerzo || "1 pt",
-        tipo: (us.tipo && ["feature", "bugfix", "improvement", "spike"].includes(us.tipo)) ? us.tipo : "feature"
-      })),
-      tareas_tecnicas: (parsed.tareas_tecnicas || []).map((t: Partial<BacklogTask>, i: number) => ({
-        id: t.id || `T${i + 1}`,
-        descripcion: t.descripcion || "Sin descripción",
-        estimado_horas: typeof t.estimado_horas === 'number' ? t.estimado_horas : 0
-      }))
+      historias_usuario: (parsed.historias_usuario || []).map((us: Partial<BacklogUserStory>, i: number) => {
+        const storyId = us.id || `US${i + 1}`;
+        return {
+          id: storyId,
+          titulo: us.titulo || "Sin título",
+          descripcion: us.descripcion || "",
+          criterio_aceptacion: Array.isArray(us.criterio_aceptacion) ? us.criterio_aceptacion : [],
+          prioridad: (us.prioridad && ["Alta", "Media", "Baja"].includes(us.prioridad)) ? us.prioridad : "Media",
+          esfuerzo: us.esfuerzo || "1 pt",
+          tipo: (us.tipo && ["feature", "bugfix", "improvement", "spike"].includes(us.tipo)) ? us.tipo : "feature",
+          tareas_tecnicas: (us.tareas_tecnicas || []).map((t: Partial<BacklogTask>, j: number) => ({
+            id: t.id || `T${i + 1}.${j + 1}`,
+            descripcion: t.descripcion || "Sin descripción",
+            estimado_horas: typeof t.estimado_horas === 'number' ? t.estimado_horas : 0
+          }))
+        };
+      })
     };
   } catch {
     console.error("Error parsing AI response as JSON:", content);
