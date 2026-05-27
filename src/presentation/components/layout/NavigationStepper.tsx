@@ -11,23 +11,23 @@ import type { StepName } from '../../../domain/entities/types';
 import type { LucideIcon } from 'lucide-react';
 
 const steps: { id: StepName; label: string; icon: LucideIcon; path: string }[] = [
-  { id: 'plan', label: 'Plan', icon: ClipboardList, path: '/dashboard/plan' },
-  { id: 'guide', label: 'Guía', icon: BookOpen, path: '/dashboard/guia' },
-  { id: 'record', label: 'Registro', icon: Edit3, path: '/dashboard/registro' },
-  { id: 'synthesis', label: 'Síntesis', icon: Filter, path: '/dashboard/sintesis' },
+  { id: 'plan', label: 'Plan', icon: ClipboardList, path: '/dashboard/test-plan/new' },
+  { id: 'guide', label: 'Guía', icon: BookOpen, path: '/dashboard/test-plan/guide' },
+  { id: 'record', label: 'Registro', icon: Edit3, path: '/dashboard/test-plan/record' },
+  { id: 'synthesis', label: 'Síntesis', icon: Filter, path: '/dashboard/test-plan/synthesis' },
 ];
 
 export function NavigationStepper() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { validationStatus } = useTestPlan();
+  const { validationStatus, currentPlanId } = useTestPlan();
 
   const getCurrentStep = (): StepName | null => {
     const path = location.pathname;
-    if (path.endsWith('/plan')) return 'plan';
-    if (path.endsWith('/guia')) return 'guide';
-    if (path.endsWith('/registro')) return 'record';
-    if (path.endsWith('/sintesis')) return 'synthesis';
+    if (path.includes('/test-plan/new')) return 'plan';
+    if (path.includes('/test-plan/guide')) return 'guide';
+    if (path.includes('/test-plan/record')) return 'record';
+    if (path.includes('/test-plan/synthesis')) return 'synthesis';
     return null;
   };
 
@@ -41,11 +41,18 @@ export function NavigationStepper() {
   const handleNavigate = (path: string, stepId: StepName) => {
     // Allows navigate if it's current step, or a previous step, or previous step is valid
     const stepIndex = steps.findIndex(s => s.id === stepId);
-    const currentIndex = steps.findIndex(s => s.id === currentStep);
+    
+    // Construct target path with ID if available
+    let targetPath = path;
+    if (currentPlanId && stepId !== 'plan') {
+      targetPath = `${path}/${currentPlanId}`;
+    }
 
-    // Derive projectId from sessionStorage and inject as query param
+    // Derive projectId from sessionStorage and inject as query param if on 'new'
     const projectId = sessionStorage.getItem('active_project_id');
-    const targetPath = projectId ? `${path}?project=${projectId}` : path;
+    if (stepId === 'plan' && projectId) {
+      targetPath = `${targetPath}?project=${projectId}`;
+    }
 
     if (stepIndex <= currentIndex) {
       navigate(targetPath);

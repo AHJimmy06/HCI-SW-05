@@ -35,3 +35,7 @@ dist-ssr
 AGENTS.md
 .agent/skills/agent-customization/SKILL.md
 .github/copilot-instructions.md
+
+Requisitos/*
+# Local Pi runtime state
+.atl/

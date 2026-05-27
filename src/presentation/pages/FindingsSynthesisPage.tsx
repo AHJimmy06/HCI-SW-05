@@ -36,10 +36,14 @@ import {
 } from "lucide-react";
 import { NavigationButtons } from "../components/layout/NavigationButtons";
 
+import { SprintBacklogDecisionModal } from "../components/SprintBacklogDecisionModal";
+
 export function FindingsSynthesisPage() {
   const navigate = useNavigate();
   const { data, updateFindings, addFinding, updateTestPlanId, clearDraft, attemptedNext, saveDraft } = useTestPlan();
   const [loading, setLoading] = useState(false);
+  const [showDecisionModal, setShowDecisionModal] = useState(false);
+  const [lastSavedId, setLastSavedId] = useState<string | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [saveStatus, setSaveStatus] = useState<{
     type: "success" | "error" | null;
@@ -154,25 +158,9 @@ export function FindingsSynthesisPage() {
 
       await findingRepo.saveAll(findingsToSave);
       if (planId) updateTestPlanId(planId);
-
-      const getDashboardPath = () => {
-        const projectId = sessionStorage.getItem('active_project_id');
-        if (projectId) return `/dashboard/project/${projectId}`;
-        return '/dashboard';
-      };
-
-      // Navegamos al dashboard PRIMERO para asegurar que el state llegue
-      navigate(getDashboardPath(), {
-        replace: true,
-        state: {
-          successMessage: "¡Misión IHC completada! Los hallazgos están en el tablero."
-        }
-      });
-
-      // Limpiamos el draft después de un breve delay para no romper la transición
-      setTimeout(() => {
-        clearDraft();
-      }, 500);
+      
+      setLastSavedId(planId!);
+      setShowDecisionModal(true);
     } catch (error: unknown) {
       console.error("Error al guardar:", error);
       setSaveStatus({
@@ -182,6 +170,34 @@ export function FindingsSynthesisPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleFinishLater = () => {
+    const getDashboardPath = () => {
+      const projectId = sessionStorage.getItem('active_project_id');
+      if (projectId) return `/dashboard/projects/${projectId}`;
+      return '/dashboard';
+    };
+
+    navigate(getDashboardPath(), {
+      replace: true,
+      state: {
+        successMessage: "¡Misión IHC completada! Los hallazgos están en el tablero."
+      }
+    });
+
+    setTimeout(() => {
+      clearDraft();
+    }, 500);
+  };
+
+  const handleGenerateBacklog = () => {
+    if (!lastSavedId) return;
+    navigate(`/dashboard/test-plan/backlog/${lastSavedId}`);
+    
+    setTimeout(() => {
+      clearDraft();
+    }, 500);
   };
 
   const isSynthesisValid = data.findings.length > 0 && data.findings.every(f => 
@@ -501,7 +517,7 @@ export function FindingsSynthesisPage() {
               onClick={() => {
                 saveDraft();
                 const projectId = sessionStorage.getItem('active_project_id');
-                navigate(projectId ? `/dashboard/project/${projectId}` : '/dashboard');
+                navigate(projectId ? `/dashboard/projects/${projectId}` : '/dashboard');
               }}
               variant="outline"
               className="group border-2 border-slate-200 text-slate-500 hover:border-primary hover:text-primary px-8 py-4 rounded-2xl transition-all flex items-center gap-3 font-bold bg-white"
@@ -514,6 +530,12 @@ export function FindingsSynthesisPage() {
 
         <NavigationButtons currentStep="synthesis" />
       </div>
+
+      <SprintBacklogDecisionModal 
+        open={showDecisionModal} 
+        onConfirm={handleGenerateBacklog} 
+        onCancel={handleFinishLater} 
+      />
     </div>
   );
 }

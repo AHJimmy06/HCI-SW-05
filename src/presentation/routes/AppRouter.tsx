@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -13,6 +13,7 @@ const TestPlanFormPage = lazy(() => import("../pages/TestPlanFormPage").then(m =
 const ModeratorGuidePage = lazy(() => import("../pages/ModeratorGuidePage").then(m => ({ default: m.ModeratorGuidePage })));
 const ObservationRecordPage = lazy(() => import("../pages/ObservationRecordPage").then(m => ({ default: m.ObservationRecordPage })));
 const FindingsSynthesisPage = lazy(() => import("../pages/FindingsSynthesisPage").then(m => ({ default: m.FindingsSynthesisPage })));
+const SprintBacklogPage = lazy(() => import("../pages/SprintBacklogPage").then(m => ({ default: m.SprintBacklogPage })));
 const OrganizationsPage = lazy(() => import("../pages/OrganizationsPage").then(m => ({ default: m.OrganizationsPage })));
 const OrganizationDetailPage = lazy(() => import("../pages/OrganizationDetailPage").then(m => ({ default: m.OrganizationDetailPage })));
 const JoinRequestsPage = lazy(() => import("../pages/JoinRequestsPage").then(m => ({ default: m.JoinRequestsPage })));
@@ -29,12 +30,22 @@ function PageLoader() {
 
 function ProtectedRoute({ children, requireProject = false }: { children: React.ReactNode; requireProject?: boolean }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  
   if (loading) return <PageLoader />;
   if (!user) return <Navigate to="/login" replace />;
+  
   if (requireProject) {
     // Check if there's a project context in sessionStorage
     const projectId = sessionStorage.getItem('active_project_id');
-    if (!projectId) {
+    // Also check if we're on a route that can recover context (has testPlanId)
+    const hasTestPlanId = location.pathname.includes('/test-plan/view/') || 
+                         location.pathname.includes('/test-plan/guide/') ||
+                         location.pathname.includes('/test-plan/record/') ||
+                         location.pathname.includes('/test-plan/synthesis/') ||
+                         location.pathname.includes('/test-plan/backlog/');
+
+    if (!projectId && !hasTestPlanId) {
       return (
         <div className="flex h-screen w-full items-center justify-center bg-slate-50">
           <div className="text-center max-w-md p-8">
@@ -59,7 +70,7 @@ export function AppRouter() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/dashboard/organizations" replace /> : <LandingPage />} />
-          <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+          <Route path="/login" element={user ? <Navigate to="/dashboard/organizations" replace /> : <LoginPage />} />
 
           {/* Unified dashboard route - ALL protected pages under one layout */}
           <Route path="/dashboard" element={
@@ -67,19 +78,24 @@ export function AppRouter() {
               <Layout />
             </ProtectedRoute>
           }>
-            {/* Wizard pages */}
-            <Route index element={<DashboardPage />} />
-            <Route path="plan" element={<TestPlanFormPage />} />
-            <Route path="guia" element={<ModeratorGuidePage />} />
-            <Route path="registro" element={<ObservationRecordPage />} />
-            <Route path="sintesis" element={<FindingsSynthesisPage />} />
+            {/* Main view - If landing on /dashboard, force go to organizations */}
+            <Route index element={<Navigate to="/dashboard/organizations" replace />} />
+            <Route path="projects/:projectId" element={<DashboardPage />} />
 
-            {/* Collaboration pages */}
+            {/* Wizard / Test Plan workflow */}
+            <Route path="test-plan">
+              <Route path="new" element={<ProtectedRoute requireProject><TestPlanFormPage /></ProtectedRoute>} />
+              <Route path="view/:testPlanId" element={<TestPlanDetailPage />} />
+              <Route path="guide/:testPlanId" element={<ModeratorGuidePage />} />
+              <Route path="record/:testPlanId" element={<ObservationRecordPage />} />
+              <Route path="synthesis/:testPlanId" element={<FindingsSynthesisPage />} />
+              <Route path="backlog/:testPlanId" element={<SprintBacklogPage />} />
+            </Route>
+
+            {/* Collaboration & Organization */}
             <Route path="organizations" element={<OrganizationsPage />} />
             <Route path="organizations/:orgId" element={<OrganizationDetailPage />} />
             <Route path="organizations/:orgId/projects/:projectId" element={<ProjectDetailPage />} />
-            <Route path="project/:projectId" element={<DashboardPage />} />
-            <Route path="test-plan/:testPlanId" element={<TestPlanDetailPage />} />
             <Route path="join-requests" element={<JoinRequestsPage />} />
           </Route>
 

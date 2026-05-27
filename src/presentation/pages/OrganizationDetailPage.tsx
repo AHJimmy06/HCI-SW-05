@@ -332,7 +332,7 @@ export function OrganizationDetailPage() {
                 {projects.map((proj) => (
                   <button
                     key={proj.id}
-                    onClick={() => navigate(`/dashboard/project/${proj.id}`)}
+                    onClick={() => navigate(`/dashboard/projects/${proj.id}`)}
                     className="border p-5 rounded-2xl bg-white shadow-sm hover:shadow-md hover:border-primary/30 transition-all text-left group"
                   >
                     <div className="flex items-center gap-3 mb-3">
