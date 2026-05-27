@@ -206,7 +206,7 @@ export function TestPlanDetailPage() {
             {plan.project_id && (
               <>
                 <span className="text-slate-300">/</span>
-                <Link to={`/dashboard/project/${plan.project_id}`} className="hover:underline">Proyecto</Link>
+                <Link to={`/dashboard/projects/${plan.project_id}`} className="hover:underline">Proyecto</Link>
               </>
             )}
             <span className="text-slate-300">/</span>

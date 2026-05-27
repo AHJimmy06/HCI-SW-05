@@ -700,7 +700,7 @@ export function DashboardPage() {
                         align="end"
                       >
                         <DropdownMenu.Item
-                          onClick={() => navigate(`/dashboard/test-plan/${m.test_plan_id}`)}
+                          onClick={() => navigate(`/dashboard/test-plan/view/${m.test_plan_id}`)}
                           className="flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg cursor-pointer outline-none focus:bg-slate-100"
                         >
                           <Eye size={14} />
