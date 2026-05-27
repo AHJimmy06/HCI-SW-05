@@ -81,11 +81,23 @@ export async function chatCompletion(
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`MiniMax API error ${response.status}: ${errorText}`);
+    let errorDetail = "";
+    try {
+      const errorData = await response.json();
+      errorDetail = JSON.stringify(errorData);
+    } catch {
+      errorDetail = await response.text();
+    }
+    console.error(`[MiniMax API Error] ${response.status}:`, errorDetail);
+    throw new Error(`MiniMax API error ${response.status}: ${errorDetail}`);
   }
 
   const data: MiniMaxChatResponse = await response.json();
+
+  if (!data.content || data.content.length === 0) {
+    console.error("[MiniMax API Error] Empty content in response:", data);
+    throw new Error("La API de MiniMax devolvió una respuesta vacía");
+  }
 
   // Find the text content block
   const textBlock = data.content?.find((block) => block.type === "text");

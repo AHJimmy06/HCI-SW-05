@@ -455,9 +455,20 @@ export function DashboardPage() {
       };
       
       loadFullPlan(mappedData);
-      const navigatePath = details.project_id 
-        ? `${targetRoute}?project=${details.project_id}` 
-        : targetRoute;
+      
+      // Target paths for nested routing
+      const routesMap: Record<string, string> = {
+        "/plan": `/dashboard/test-plan/new`,
+        "/guia": `/dashboard/test-plan/guide/${planId}`,
+        "/registro": `/dashboard/test-plan/record/${planId}`,
+        "/sintesis": `/dashboard/test-plan/synthesis/${planId}`
+      };
+
+      const baseRoute = routesMap[targetRoute] || `/dashboard/test-plan/new`;
+      const navigatePath = details.project_id && targetRoute === "/plan"
+        ? `${baseRoute}?project=${details.project_id}` 
+        : baseRoute;
+
       navigate(navigatePath);
     } catch (err) {
       console.error("Error al cargar para editar", err);
@@ -484,10 +495,10 @@ export function DashboardPage() {
     resetData();
     if (projectId) {
       sessionStorage.setItem('active_project_id', projectId);
-      navigate(`/dashboard/plan?project=${projectId}`);
+      navigate(`/dashboard/test-plan/new?project=${projectId}`);
     } else {
       sessionStorage.removeItem('active_project_id');
-      navigate("/dashboard/plan");
+      navigate("/dashboard/test-plan/new");
     }
   };
 
@@ -689,7 +700,7 @@ export function DashboardPage() {
                         align="end"
                       >
                         <DropdownMenu.Item
-                          onClick={() => navigate(`/dashboard/test-plan/${m.test_plan_id}`)}
+                          onClick={() => navigate(`/dashboard/test-plan/view/${m.test_plan_id}`)}
                           className="flex items-center gap-2 px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900 rounded-lg cursor-pointer outline-none focus:bg-slate-100"
                         >
                           <Eye size={14} />

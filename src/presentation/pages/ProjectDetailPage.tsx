@@ -97,12 +97,12 @@ export function ProjectDetailPage() {
       observations: [],
       findings: []
     });
-    navigate("/dashboard/plan");
+    navigate("/dashboard/test-plan/new");
   };
 
   const handleNewPlan = () => {
     sessionStorage.setItem('active_project_id', projectId || '');
-    navigate(`/dashboard/plan?project=${projectId}`);
+    navigate(`/dashboard/test-plan/new?project=${projectId}`);
   };
 
   if (loading) {
@@ -121,11 +121,12 @@ export function ProjectDetailPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex-1">
             <button
-              onClick={() => navigate(`/organizations/${orgId}`)}
+              onClick={() => navigate(`/dashboard/organizations/${project?.organization_id}`)}
               className="flex items-center gap-2 text-slate-600 hover:text-primary transition-colors mb-2 font-medium"
             >
-              <ArrowLeft size={18} /> Volver a la organización
+              <ArrowLeft size={18} /> Volver a organización
             </button>
+
             <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
               <FolderKanban className="text-primary" size={28} />
               {project.name}

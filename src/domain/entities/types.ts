@@ -144,27 +144,24 @@ export interface BacklogUserStory {
   titulo: string;
   descripcion: string;
   criterio_aceptacion: string[];
-  prioridad: "Crítica" | "Alta" | "Media" | "Baja";
-  esfuerzo: string; // story points o horas
+  prioridad: "Alta" | "Media" | "Baja";
+  esfuerzo: string;
   tipo: "feature" | "bugfix" | "improvement" | "spike";
+  tareas_tecnicas: BacklogTask[];
 }
 
 export interface BacklogTask {
   id: string;
   descripcion: string;
-  responsable?: string;
-  estimado_horas?: number;
-  completada: boolean;
+  estimado_horas: number;
 }
 
 export interface SprintBacklog {
   sprint_nombre: string;
-  duracion_sprint_dias: number;
   objetivo_sprint: string;
+  duracion_sprint_dias: number;
+  notas_organizacion: string;
   historias_usuario: BacklogUserStory[];
-  tareas_tecnicas: BacklogTask[];
-  definition_of_done: string[];
-  notas: string;
 }
 
 // Sprint Backlog CSV format for Notion import

@@ -44,7 +44,8 @@ export function ModeratorGuidePage() {
     updatePlan('test_date', new Date().toISOString().split('T')[0]);
     // Preserve projectId via query param
     const projectId = sessionStorage.getItem('active_project_id');
-    const targetPath = projectId ? `/dashboard/registro?project=${projectId}` : '/dashboard/registro';
+    const planId = data.test_plan_id;
+    const targetPath = planId ? `/dashboard/test-plan/record/${planId}` : '/dashboard/test-plan/record';
     sessionStorage.setItem('active_project_id', projectId || '');
     navigate(targetPath);
   };
@@ -99,7 +100,7 @@ export function ModeratorGuidePage() {
 
       const getDashboardPath = () => {
         const projectId = sessionStorage.getItem('active_project_id');
-        if (projectId) return `/dashboard/project/${projectId}`;
+        if (projectId) return `/dashboard/projects/${projectId}`;
         return '/dashboard';
       };
 
@@ -386,7 +387,10 @@ export function ModeratorGuidePage() {
 
           <Button variant="ghost" onClick={() => {
               const projectId = sessionStorage.getItem('active_project_id');
-              const targetPath = projectId ? `/dashboard/plan?project=${projectId}` : '/dashboard/plan';
+              const planId = data.test_plan_id;
+              const targetPath = planId 
+                ? `/dashboard/test-plan/new/${planId}` 
+                : (projectId ? `/dashboard/test-plan/new?project=${projectId}` : '/dashboard/test-plan/new');
               navigate(targetPath);
             }} className="flex items-center gap-2 px-6 py-6 rounded-xl font-semibold hover:bg-slate-100 transition-all text-slate-700">
             <ChevronLeft size={20} />
