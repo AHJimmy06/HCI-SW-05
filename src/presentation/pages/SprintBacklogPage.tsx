@@ -27,6 +27,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export function SprintBacklogPage() {
   const { testPlanId } = useParams<{ testPlanId: string }>();
@@ -115,6 +117,107 @@ export function SprintBacklogPage() {
     link.href = url;
     link.download = `backlog-${backlog.sprint_nombre.toLowerCase().replace(/\s+/g, '-')}.md`;
     link.click();
+  };
+
+  const handleExportPDF = () => {
+    if (!backlog) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Header
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, pageWidth, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("Sprint Backlog Report", 20, 20);
+    
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generado por IHC Intelligence Dashboard · ${new Date().toLocaleDateString()}`, 20, 30);
+
+    // Sprint Info
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text(backlog.sprint_nombre, 20, 55);
+
+    doc.setFontSize(12);
+    doc.text("Objetivo del Sprint:", 20, 65);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(71, 85, 105); // slate-600
+    const objectiveLines = doc.splitTextToSize(backlog.objetivo_sprint, pageWidth - 40);
+    doc.text(objectiveLines, 20, 72);
+
+    let currentY = 72 + (objectiveLines.length * 7) + 10;
+
+    // User Stories Section
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Historias de Usuario", 20, currentY);
+    currentY += 10;
+
+    backlog.historias_usuario.forEach((us) => {
+      if (currentY > 250) {
+        doc.addPage();
+        currentY = 20;
+      }
+
+      // Story Card logic in PDF
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.roundedRect(15, currentY - 5, pageWidth - 30, 45, 3, 3, 'F');
+      
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "bold");
+      doc.text(`[${us.id}] ${us.titulo}`, 20, currentY + 5);
+      
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Prioridad: ${us.prioridad} | Esfuerzo: ${us.esfuerzo} | Tipo: ${us.tipo}`, 20, currentY + 12);
+
+      doc.setTextColor(51, 65, 85);
+      const descLines = doc.splitTextToSize(us.descripcion, pageWidth - 45);
+      doc.text(descLines, 20, currentY + 20);
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.text("AC:", 20, currentY + 32);
+      doc.setFont("helvetica", "normal");
+      const acText = us.criterio_aceptacion.slice(0, 3).join(" | ");
+      const acLines = doc.splitTextToSize(acText, pageWidth - 55);
+      doc.text(acLines, 28, currentY + 32);
+
+      currentY += 55;
+    });
+
+    // Technical Tasks Table
+    if (currentY > 200) {
+      doc.addPage();
+      currentY = 20;
+    } else {
+      currentY += 10;
+    }
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("Tareas Técnicas", 20, currentY);
+    currentY += 5;
+
+    autoTable(doc, {
+      startY: currentY,
+      head: [['ID', 'Descripción', 'Estimado']],
+      body: backlog.tareas_tecnicas.map(t => [t.id, t.descripcion, `${t.estimado_horas}h`]),
+      headStyles: { fillColor: [15, 23, 42] },
+      styles: { fontSize: 9 },
+      margin: { left: 20, right: 20 }
+    });
+
+    doc.save(`backlog-${backlog.sprint_nombre.toLowerCase().replace(/\s+/g, '-')}.pdf`);
   };
 
   const handleSave = async () => {
@@ -256,6 +359,14 @@ export function SprintBacklogPage() {
                 >
                   <FileText size={16} />
                   <span>Exportar Markdown</span>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={handleExportPDF}
+                  className="justify-start gap-2 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-xl font-bold"
+                >
+                  <Zap size={16} className="text-amber-500" />
+                  <span>Exportar PDF</span>
                 </Button>
                 <Button 
                   variant="ghost" 
