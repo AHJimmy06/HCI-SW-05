@@ -15,7 +15,8 @@ import {
   Zap,
   Ticket,
   AlertTriangle,
-  FileText
+  FileText,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,6 +287,45 @@ export function SprintBacklogPage() {
     });
   };
 
+  const handleRemoveStory = (id: string) => {
+    if (!backlog) return;
+    setBacklog({
+      ...backlog,
+      historias_usuario: backlog.historias_usuario.filter(s => s.id !== id)
+    });
+  };
+
+  const handleRemoveTask = (id: string) => {
+    if (!backlog) return;
+    setBacklog({
+      ...backlog,
+      tareas_tecnicas: backlog.tareas_tecnicas.filter(t => t.id !== id)
+    });
+  };
+
+  const handleRemoveAC = (storyId: string, index: number) => {
+    if (!backlog) return;
+    const newStories = backlog.historias_usuario.map(s => {
+      if (s.id === storyId) {
+        const newAC = s.criterio_aceptacion.filter((_, i) => i !== index);
+        return { ...s, criterio_aceptacion: newAC };
+      }
+      return s;
+    });
+    setBacklog({ ...backlog, historias_usuario: newStories });
+  };
+
+  const handleAddAC = (storyId: string) => {
+    if (!backlog) return;
+    const newStories = backlog.historias_usuario.map(s => {
+      if (s.id === storyId) {
+        return { ...s, criterio_aceptacion: [...s.criterio_aceptacion, "Nuevo criterio"] };
+      }
+      return s;
+    });
+    setBacklog({ ...backlog, historias_usuario: newStories });
+  };
+
   if (loading) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center bg-slate-50 gap-4">
@@ -471,9 +511,18 @@ export function SprintBacklogPage() {
                               <Input 
                                 value={story.titulo} 
                                 onChange={(e) => updateStory(story.id, "titulo", e.target.value)}
-                                className="border-none bg-transparent p-0 h-auto text-lg font-black text-slate-900 focus-visible:ring-0 placeholder:text-slate-300"
+                                className="border-none bg-transparent p-0 h-auto text-lg font-black text-slate-900 focus-visible:ring-0 placeholder:text-slate-300 flex-1"
                                 placeholder="Título de la historia..."
                               />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveStory(story.id)}
+                                className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                title="Eliminar historia"
+                              >
+                                <Trash2 size={14} />
+                              </Button>
                             </div>
                             <textarea 
                               rows={2}
@@ -510,13 +559,23 @@ export function SprintBacklogPage() {
                         </div>
 
                         <div className="mt-4 pt-4 border-t border-slate-50 space-y-3">
-                          <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                            <CheckCircle2 size={12} className="text-emerald-500" />
-                            Criterios de Aceptación
-                          </h4>
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                              <CheckCircle2 size={12} className="text-emerald-500" />
+                              Criterios de Aceptación
+                            </h4>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleAddAC(story.id)}
+                              className="h-6 px-2 text-[10px] font-bold text-primary hover:bg-primary/5 rounded-md"
+                            >
+                              <Plus size={10} className="mr-1" /> Añadir AC
+                            </Button>
+                          </div>
                           <div className="space-y-2">
                             {story.criterio_aceptacion.map((ac, acIdx) => (
-                              <div key={acIdx} className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all">
+                              <div key={acIdx} className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-transparent hover:border-slate-200 transition-all group/ac">
                                 <div className="h-5 w-5 rounded-md bg-white border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-400">
                                   {acIdx + 1}
                                 </div>
@@ -527,8 +586,16 @@ export function SprintBacklogPage() {
                                     newAC[acIdx] = e.target.value;
                                     updateStory(story.id, "criterio_aceptacion", newAC);
                                   }}
-                                  className="border-none bg-transparent h-6 text-xs font-bold text-slate-700 focus-visible:ring-0 p-0"
+                                  className="border-none bg-transparent h-6 text-xs font-bold text-slate-700 focus-visible:ring-0 p-0 flex-1"
                                 />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveAC(story.id, acIdx)}
+                                  className="h-6 w-6 opacity-0 group-hover/ac:opacity-100 text-slate-300 hover:text-red-500 transition-all"
+                                >
+                                  <Trash2 size={12} />
+                                </Button>
                               </div>
                             ))}
                           </div>
@@ -547,8 +614,16 @@ export function SprintBacklogPage() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {backlog.tareas_tecnicas.map((task) => (
-                      <div key={task.id} className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm hover:border-primary/20 transition-all group">
-                        <div className="flex items-start justify-between mb-3">
+                      <div key={task.id} className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm hover:border-primary/20 transition-all group relative">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveTask(task.id)}
+                          className="absolute top-4 right-4 h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                        >
+                          <Trash2 size={14} />
+                        </Button>
+                        <div className="flex items-start justify-between mb-3 pr-8">
                           <span className="text-[9px] font-black text-slate-400 bg-slate-50 px-2 py-0.5 rounded-md uppercase tracking-widest">{task.id}</span>
                           <div className="flex items-center gap-1">
                             <Clock size={10} className="text-slate-400" />
@@ -564,7 +639,7 @@ export function SprintBacklogPage() {
                         <Input 
                           value={task.descripcion} 
                           onChange={(e) => updateTask(task.id, "descripcion", e.target.value)}
-                          className="border-none bg-transparent p-0 h-auto text-sm font-bold text-slate-800 focus-visible:ring-0"
+                          className="border-none bg-transparent p-0 h-auto text-sm font-bold text-slate-800 focus-visible:ring-0 w-full"
                         />
                       </div>
                     ))}
