@@ -175,8 +175,8 @@ graph TD
 
 ```mermaid
 erDiagram
-    SprintBacklog "1" o-- "N" BacklogUserStory : contiene
-    BacklogUserStory "1" o-- "N" BacklogTask : desglosa
+    SprintBacklog ||--o{ BacklogUserStory : "historias_usuario"
+    BacklogUserStory ||--o{ BacklogTask : "tareas_tecnicas"
 
     SprintBacklog {
         string sprint_nombre PK
