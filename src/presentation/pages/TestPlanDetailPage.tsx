@@ -11,7 +11,6 @@ import {
   ClipboardList, CheckCircle2, XCircle, Loader2,
   User, Scissors, FileBarChart, Clock3
 } from "lucide-react";
-import { SprintBacklogResult } from "../components/SprintBacklogResult";
 
 export function TestPlanDetailPage() {
   const { testPlanId } = useParams<{ testPlanId: string }>();
@@ -26,7 +25,6 @@ export function TestPlanDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sprintBacklog, setSprintBacklog] = useState<SprintBacklog | null>(null);
-  const [showBacklogModal, setShowBacklogModal] = useState(false);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
   const [findingsPriorityFilter, setFindingsPriorityFilter] = useState<string>("Todos");
   const [findingsStatusFilter, setFindingsStatusFilter] = useState<string>("Todos");
@@ -479,14 +477,6 @@ export function TestPlanDetailPage() {
           KPIs de usabilidad estándar ISO 9241-11
         </p>
       </footer>
-
-      {/* Sprint Backlog Result Modal */}
-      <SprintBacklogResult
-        backlog={sprintBacklog as any}
-        open={showBacklogModal}
-        onClose={() => setShowBacklogModal(false)}
-        productName={plan?.product_name || "Producto"}
-      />
     </div>
   );
 }
