@@ -70,7 +70,7 @@ export function AppRouter() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={user ? <Navigate to="/dashboard/organizations" replace /> : <LandingPage />} />
-          <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+          <Route path="/login" element={user ? <Navigate to="/dashboard/organizations" replace /> : <LoginPage />} />
 
           {/* Unified dashboard route - ALL protected pages under one layout */}
           <Route path="/dashboard" element={
@@ -78,8 +78,8 @@ export function AppRouter() {
               <Layout />
             </ProtectedRoute>
           }>
-            {/* Main view */}
-            <Route index element={<DashboardPage />} />
+            {/* Main view - If landing on /dashboard, force go to organizations */}
+            <Route index element={<Navigate to="/dashboard/organizations" replace />} />
             <Route path="projects/:projectId" element={<DashboardPage />} />
 
             {/* Wizard / Test Plan workflow */}
