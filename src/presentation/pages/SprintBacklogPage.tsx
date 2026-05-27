@@ -556,7 +556,7 @@ export function SprintBacklogPage() {
                             </Button>
                          </div>
                          <div className="grid grid-cols-1 gap-3">
-                            {story.tareas_tecnicas.map((task) => (
+                            {(story.tareas_tecnicas || []).map((task) => (
                                <div key={task.id} className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 group/task">
                                   <Badge variant="outline" className="text-[9px] bg-slate-50 border-none font-bold text-slate-400">{task.id}</Badge>
                                   <Input 
