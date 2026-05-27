@@ -1,21 +1,3 @@
----
-theme: default
-paginate: true
-marp: true
-backgroundColor: #fff
-style: |
-  section {
-    font-family: 'Segoe UI', system-ui, sans-serif;
-  }
-  header {
-    color: #0f172a;
-  }
-  section.title {
-    justify-content: center;
-    align-items: center;
-  }
----
-
 # Sprint Backlog Asistido por IA
 
 ### HCI-SW-05
@@ -40,28 +22,26 @@ style: |
 
 ## ¿Qué es el Sprint Backlog AI?
 
+El módulo transforma automáticamente hallazgos de pruebas de usabilidad en un Sprint Backlog estructurado.
+
 | Aspecto | Descripción |
 |---------|-------------|
-| **Propósito** | Transformar hallazgos de usabilidad en Sprint Backlog |
-| **Motor IA** | MiniMax-M2.7 Chat Completion |
-| **Gestión** | Edición inline + persistencia en Supabase |
-| **Salidas** | Markdown (editables) + PDF (imprimibles) |
+| Propósito | Transformar hallazgos de usabilidad en Sprint Backlog |
+| Motor IA | MiniMax-M2.7 Chat Completion |
+| Gestión | Edición inline + persistencia en Supabase |
+| Salidas | Markdown (editables) + PDF (imprimibles) |
 
 ---
 
 ## Flujo Completo del Módulo
 
 ```
-┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────┐    ┌──────────────┐
-│   Plan   │───▶│  Guía    │───▶│ Registro │───▶│ Síntesis │───▶│   Sprint     │
-│          │    │ (Tasks)  │    │(Observ.) │    │(Findings)│    │   Backlog IA │
-└──────────┘    └──────────┘    └──────────┘    └──────────┘    └──────┬───────┘
-                                                                      │
-                                                              ┌───────┴───────┐
-                                                              ▼               ▼
-                                                         Exportable      Editable
-                                                         📝 MD 📄 PDF      ✅ SI
-
+Plan --> Guia (Tasks) --> Registro (Observ.) --> Sintesis (Findings) --> Sprint Backlog IA
+                                                                                |
+                                                                +-------------+-------------+
+                                                                |                           |
+                                                            Exportable               Editable
+                                                          MD + PDF                    SI
 ```
 
 ---
@@ -71,25 +51,16 @@ style: |
 ## Arquitectura Hexagonal
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    PRESENTATION LAYER                   │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │              SprintBacklogPage.tsx                 │  │
-│  │  Header | Editor (US/Tasks) | Sidebar Config     │  │
-│  └───────────────────────────────────────────────────┘  │
-│                           │                              │
-│                           ▼                              │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │                    DOMAIN LAYER                   │  │
-│  │  SprintBacklogGenerator.ts | types.ts            │  │
-│  └───────────────────────────────────────────────────┘  │
-│                           │                              │
-│                           ▼                              │
-│  ┌───────────────────────────────────────────────────┐  │
-│  │                INFRASTRUCTURE LAYER                │  │
-│  │  Supabase Repository  |  AI (MiniMax-M2.7)       │  │
-│  └───────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
+PRESENTATION LAYER
+  SprintBacklogPage.tsx (Header | Editor | Sidebar)
+          |
+          v
+DOMAIN LAYER
+  SprintBacklogGenerator.ts | types.ts
+          |
+          v
+INFRASTRUCTURE LAYER
+  Supabase Repository | AI (MiniMax-M2.7)
 ```
 
 ---
@@ -97,12 +68,12 @@ style: |
 ## Componentes Principales
 
 | Componente | Ubicación | Responsabilidad |
-|------------|-----------|-----------------|
-| `SprintBacklogPage` | `presentation/pages/` | UI completa, editor, export |
-| `SprintBacklogGenerator` | `domain/services/` | Prompt building, API call, parsing |
-| `types.ts` | `domain/entities/` | Interfaces: SprintBacklog, UserStory, Task |
-| `SupabaseRepositories` | `infrastructure/` | Persistencia JSONB |
-| `chatCompletion` | `lib/ai.ts` | Wrapper de API MiniMax |
+|-----------|-----------|-----------------|
+| SprintBacklogPage | presentation/pages/ | UI completa, editor, export |
+| SprintBacklogGenerator | domain/services/ | Prompt building, API call, parsing |
+| types.ts | domain/entities/ | Interfaces: SprintBacklog, UserStory, Task |
+| SupabaseRepositories | infrastructure/ | Persistencia JSONB |
+| chatCompletion | lib/ai.ts | Wrapper de API MiniMax |
 
 ---
 
@@ -112,23 +83,11 @@ style: |
 
 ```
 FullTestPlan
-├── product_name    ──┐
-├── module_name     ──┼──▶ CONTEXTO DEL PRODUCTO
-└── objective       ──┘
-
-plan.tasks[]        ───▶ 1. GUÍA DE TAREAS
-                         "Tarea 1 [ID: T1]: [scenario]"
-                         "Tarea 2 [ID: T2]: [scenario]"
-
-plan.observations   ───▶ 2. REGISTRO DE OBSERVACIONES (Top 10)
-.filter(!success)  ───▶ "- Problema en T1: [detected_problem]"
-.slice(0,10)       ───▶ "- Problema en T2: [key_comments]"
-
-plan.findings[]     ───▶ 3. SÍNTESIS DE HALLAZGOS
-                         "Hallazgo 1: Problema, Severidad..."
+  product_name, module_name, objective --> CONTEXTO
+  tasks[] --> GUIA DE TAREAS
+  observations[] (top 10) --> REGISTRO DE OBSERVACIONES
+  findings[] --> SINTESIS DE HALLAZGOS
 ```
-
----
 
 ## Paso 2: Llamada a API
 
@@ -137,8 +96,8 @@ const response = await chatCompletion(
   [{ role: "user", content: buildPrompt(plan) }],
   {
     model: "MiniMax-M2.7",
-    temperature: 0.3,    // Bajo = determinístico
-    max_tokens: 8192,    // Amplio para JSON complejo
+    temperature: 0.3,
+    max_tokens: 8192,
     system: "Eres un Product Owner experto en Scrum..."
   }
 );
@@ -150,7 +109,7 @@ const response = await chatCompletion(
 1. Limpiar bloques ```json ... ```
 2. JSON.parse(response)
 3. Validar campos obligatorios
-4. Asignar defaults (duracion: 14)
+4. Asignar defaults
 5. Devolver SprintBacklog
 ```
 
@@ -176,8 +135,7 @@ const response = await chatCompletion(
       "esfuerzo": "3 pts",
       "tipo": "feature",
       "tareas_tecnicas": [
-        { "id": "T1.1", "descripcion": "Regex RFC", "estimado_horas": 4 },
-        { "id": "T1.2", "descripcion": "Validación rango", "estimado_horas": 2 }
+        { "id": "T1.1", "descripcion": "Regex RFC", "estimado_horas": 4 }
       ]
     }
   ]
@@ -190,16 +148,16 @@ const response = await chatCompletion(
 
 ```
 SprintBacklog
-└── historias_usuario[]
-    │
-    ├── US1 ──┬── T1.1 (Regex RFC, 4h)
-    │         └── T1.2 (Validación rango, 2h)
-    │
-    ├── US2 ──┬── T2.1 (Mensajes error, 3h)
-    │         └── T2.2 (Animaciones éxito, 1h)
-    │
-    └── US3 ──┬── T3.1 (Notificaciones, 2h)
-              └── T3.2 (Tests unitarios, 4h)
+  historias_usuario[]
+    US1
+      T1.1 (Regex RFC, 4h)
+      T1.2 (Validación rango, 2h)
+    US2
+      T2.1 (Mensajes error, 3h)
+      T2.2 (Animaciones éxito, 1h)
+    US3
+      T3.1 (Notificaciones, 2h)
+      T3.2 (Tests unitarios, 4h)
 ```
 
 ---
@@ -210,38 +168,33 @@ SprintBacklog
 
 | Operación | Función | Ubicación |
 |-----------|---------|-----------|
-| Editar título US | `updateStory(id, 'titulo', val)` | Inline input |
-| Editar descripción US | `updateStory(id, 'descripcion', val)` | Inline textarea |
-| Cambiar prioridad | `updateStory(id, 'prioridad', val)` | Select dropdown |
-| Agregar AC | `handleAddAC(storyId)` | Button + array push |
+| Editar título US | updateStory(id, 'titulo', val) | Inline input |
+| Editar descripción US | updateStory(id, 'descripcion', val) | Inline textarea |
+| Cambiar prioridad | updateStory(id, 'prioridad', val) | Select dropdown |
+| Agregar AC | handleAddAC(storyId) | Button + array push |
 | Editar AC inline | Direct array manipulation | Inline input |
-| Eliminar AC | `handleRemoveAC(storyId, idx)` | Delete button |
-| Agregar tarea | `handleAddNestedTask(storyId)` | Button en US |
-| Eliminar tarea | `handleRemoveNestedTask(sId, tId)` | Delete button |
-| Editar tarea | `updateNestedTask(sId, tId, field, val)` | Inline inputs |
-| Eliminar US | `handleRemoveStory(id)` | Delete button |
+| Eliminar AC | handleRemoveAC(storyId, idx) | Delete button |
+| Agregar tarea | handleAddNestedTask(storyId) | Button en US |
+| Eliminar tarea | handleRemoveNestedTask(sId, tId) | Delete button |
+| Editar tarea | updateNestedTask(sId, tId, field, val) | Inline inputs |
+| Eliminar US | handleRemoveStory(id) | Delete button |
 
 ---
 
 ## Vista Consolidada de Tareas
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  CONSOLIDATED TASKS VIEW                                     │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  US1 ── Validación en Tiempo Real                            │
-│  ├── T1.1 ── Regex validación RFC        ── 4h               │
-│  └── T1.2 ── Validación de rango        ── 2h               │
-│                                                              │
-│  US2 ── Mejora de Feedback Visual                            │
-│  ├── T2.1 ── Mensajes de error          ── 3h               │
-│  └── T2.2 ── Animaciones de éxito       ── 1h               │
-│                                                              │
-│  ─────────────────────────────────────────                   │
-│  TOTAL: 10 horas                                             │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
+CONSOLIDATED TASKS VIEW
+-------------------------------------
+US1 - Validación en Tiempo Real
+  T1.1 - Regex validación RFC - 4h
+  T1.2 - Validación de rango - 2h
+
+US2 - Mejora de Feedback Visual
+  T2.1 - Mensajes de error - 3h
+  T2.2 - Animaciones de éxito - 1h
+-------------------------------------
+TOTAL: 10 horas
 ```
 
 ---
@@ -252,19 +205,14 @@ SprintBacklog
 
 ```typescript
 function handleExportMarkdown() {
-  // Genera estructura:
-  // # Sprint Backlog: {sprint_nombre}
-  // ## Historias de Usuario
-  // ### [US1] {titulo}
-  // **Criterios:**
-  // - [ ] {criterio}
-  // **Tareas:**
-  // | ID | Desc | Horas |
-  // | T1.1 | desc | 4h |
-
+  let md = `# Sprint Backlog: ${backlog.sprint_nombre}`;
+  md += `## Historias de Usuario`;
+  backlog.historias_usuario.forEach(us => {
+    md += `### [${us.id}] ${us.titulo}`;
+    md += `**Criterios:** ${us.criterio_aceptacion.join(' | ')}`;
+  });
   const blob = new Blob([md], { type: 'text/markdown' });
-  const url = URL.createObjectURL(blob);
-  link.download = `backlog-{sprint_nombre}.md`;
+  link.download = `backlog-${sprint_nombre}.md`;
   link.click();
 }
 ```
@@ -274,11 +222,9 @@ function handleExportMarkdown() {
 ```typescript
 function handleExportPDF() {
   const doc = new jsPDF();
-  // Header con estilo slate-900
+  doc.setFillColor(15, 23, 42);
   doc.rect(0, 0, pageWidth, 40, 'F');
-  // Título, info sprint
-  // User Stories con autoTable
-  doc.save(`backlog-{sprint_nombre}.pdf`);
+  doc.save(`backlog-${sprint_nombre}.pdf`);
 }
 ```
 
@@ -287,12 +233,12 @@ function handleExportPDF() {
 ## Comparación: MD vs PDF
 
 | Aspecto | Markdown | PDF |
-|---------|:-------:|:---:|
-| Editable | ✅ | ❌ |
-| Portable | ✅ | ✅ |
-| Estilo visual | ⚠️ | ✅ |
-| Links | ✅ | ❌ |
-| Print | ⚠️ | ✅ |
+|---------|----------|-----|
+| Editable | SI | NO |
+| Portable | SI | SI |
+| Estilo visual | Basico | Rico |
+| Links | SI | NO |
+| Print | Manual | Auto |
 
 ---
 
@@ -302,22 +248,22 @@ function handleExportPDF() {
 
 | Parámetro | Valor | Justificación |
 |-----------|-------|---------------|
-| `model` | `MiniMax-M2.7` | Modelo configurado |
-| `temperature` | `0.3` | Balance creatividad/consistencia |
-| `max_tokens` | `8192` | Contexto amplio para JSON |
-| `system` | PO Experto Scrum | Define rol y formato |
+| model | MiniMax-M2.7 | Modelo configurado |
+| temperature | 0.3 | Balance creatividad/consistencia |
+| max_tokens | 8192 | Contexto amplio para JSON |
+| system | PO Experto Scrum | Define rol y formato |
 
 ## Reglas Impuestas al Modelo
 
 ```
-REGLAS CRÍTICAS:
-• NO texto introductorio
-• NO bloques markdown
-• SOLO JSON puro
-• 3-6 Historias de Usuario
-• 2-4 Tareas Técnicas por US
-• Prioridad: Alta | Media | Baja
-• Tipo: feature | bugfix | improvement | spike
+REGLAS CRITICAS:
+- NO texto introductorio
+- NO bloques markdown
+- SOLO JSON puro
+- 3-6 Historias de Usuario
+- 2-4 Tareas Tecnicas por US
+- Prioridad: Alta | Media | Baja
+- Tipo: feature | bugfix | improvement | spike
 ```
 
 ---
@@ -328,14 +274,14 @@ REGLAS CRÍTICAS:
 
 | Capa | Tecnología |
 |------|------------|
-| **Frontend** | React 18 + TypeScript + Vite |
-| **Estado** | React hooks (useState/useCallback) |
-| **UI** | shadcn/ui + Lucide React |
-| **PDF** | jsPDF + jspdf-autotable |
-| **Backend** | Supabase (PostgreSQL) |
-| **Storage** | JSONB para SprintBacklog |
-| **AI** | MiniMax-M2.7 API |
-| **Arquitectura** | Hexagonal (Domain/Infrastructure/Presentation) |
+| Frontend | React 18 + TypeScript + Vite |
+| Estado | React hooks (useState/useCallback) |
+| UI | shadcn/ui + Lucide React |
+| PDF | jsPDF + jspdf-autotable |
+| Backend | Supabase (PostgreSQL) |
+| Storage | JSONB para SprintBacklog |
+| AI | MiniMax-M2.7 API |
+| Arquitectura | Hexagonal (Domain/Infrastructure/Presentation) |
 
 ---
 
@@ -344,58 +290,42 @@ REGLAS CRÍTICAS:
 ```
 src/
 ├── domain/
-│   ├── entities/
-│   │   └── types.ts              ← SprintBacklog interfaces
-│   └── services/
-│       └── SprintBacklogGenerator.ts  ← AI logic
-│
+│   ├── entities/types.ts        (SprintBacklog interfaces)
+│   └── services/SprintBacklogGenerator.ts  (AI logic)
 ├── presentation/
-│   └── pages/
-│       └── SprintBacklogPage.tsx  ← UI completa
-│
+│   └── pages/SprintBacklogPage.tsx  (UI completa)
 ├── infrastructure/
-│   └── repositories/
-│       └── SupabaseRepositories.ts ← Persistence
-│
-└── lib/
-    └── ai.ts                     ← chatCompletion wrapper
+│   └── repositories/SupabaseRepositories.ts  (Persistence)
+└── lib/ai.ts  (chatCompletion wrapper)
 
 documentacion/
 ├── README.md
-├── SPRINT-BACKLOG-IA.md          ← Guía técnica
-├── SPRINT-BACKLOG-ARQUITECTURA.md ← Diagramas Mermaid
-└── DIAPOSITIVAS/
-    └── PRESENTACION-SPRINT-BACKLOG.md ← Esta presentación
+├── SPRINT-BACKLOG-IA.md
+├── SPRINT-BACKLOG-ARQUITECTURA.md
+├── SPRINT-BACKLOG-DIAPOS.md
+└── DIAPOSITIVAS/PRESENTACION-SPRINT-BACKLOG.md
 ```
 
 ---
 
-# ✅ Resumen
+# Resumen
 
-## Capacidades del Módulo
+## Capacidades del Modulo
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                                                         │
-│   ✅ Generación automática de Sprint Backlog             │
-│   ✅ Integración de Tasks + Observations + Findings     │
-│   ✅ Edición inline completa                            │
-│   ✅ Persistencia en Supabase (JSONB)                   │
-│   ✅ Exportación Markdown (editables)                  │
-│   ✅ Exportación PDF (imprimibles)                     │
-│   ✅ Vista consolidada de tareas                       │
-│   ✅ Jerarquía US → Tasks (1:N)                        │
-│                                                         │
-│   🚀 Listo para integración Scrum                      │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
+- Generacion automatica de Sprint Backlog
+- Integracion de Tasks + Observations + Findings
+- Edicion inline completa
+- Persistencia en Supabase (JSONB)
+- Exportacion Markdown (editables)
+- Exportacion PDF (imprimibles)
+- Vista consolidada de tareas
+- Jerarquia US - Tasks (1:N)
+
+Listo para integracion Scrum
 
 ---
 
-# 🎉 ¡Gracias!
-
-## Preguntas
+# Gracias
 
 ### HCI-SW-05
 ### Sistema de Pruebas de Usabilidad con IA

@@ -139,7 +139,7 @@ flowchart LR
     B -->|Markdown| C[buildMarkdownString]
     B -->|PDF| D[jsPDF + autoTable]
     C --> E[Blob + URL.createObjectURL]
-    D --> F[doc.save()]
+    D --> F[doc.save]
     E --> G[anchor.download]
     F --> G
     G --> H[Download File]
