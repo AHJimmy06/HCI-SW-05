@@ -183,15 +183,20 @@ export function SprintBacklogPage() {
       const descLines = doc.splitTextToSize(us.descripcion, pageWidth - 45);
       doc.text(descLines, 20, currentY + 20);
 
+      let acY = currentY + 30 + (descLines.length * 2);
       doc.setFontSize(8);
       doc.setFont("helvetica", "bold");
-      doc.text("AC:", 20, currentY + 32);
+      doc.text("Criterios de Aceptación:", 20, acY);
       doc.setFont("helvetica", "normal");
-      const acText = us.criterio_aceptacion.slice(0, 3).join(" | ");
-      const acLines = doc.splitTextToSize(acText, pageWidth - 55);
-      doc.text(acLines, 28, currentY + 32);
+      
+      us.criterio_aceptacion.forEach((ac, index) => {
+        const bullet = `• ${ac}`;
+        const acLines = doc.splitTextToSize(bullet, pageWidth - 55);
+        doc.text(acLines, 25, acY + 5 + (index * 5));
+        acY += (acLines.length * 4);
+      });
 
-      currentY += 55;
+      currentY = acY + 15;
     });
 
     // Technical Tasks Table
