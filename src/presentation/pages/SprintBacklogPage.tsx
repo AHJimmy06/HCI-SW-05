@@ -332,9 +332,9 @@ export function SprintBacklogPage() {
   };
 
   const consolidatedTasks = useMemo(() => {
-    if (!backlog) return [];
+    if (!backlog || !backlog.historias_usuario) return [];
     return backlog.historias_usuario.flatMap(s => 
-      s.tareas_tecnicas.map(t => ({ ...t, parentStoryId: s.id, parentStoryTitle: s.titulo }))
+      (s.tareas_tecnicas || []).map(t => ({ ...t, parentStoryId: s.id, parentStoryTitle: s.titulo }))
     );
   }, [backlog]);
 
@@ -510,7 +510,7 @@ export function SprintBacklogPage() {
                            </Select>
                            <Badge variant="outline" className="text-[10px] font-bold border-slate-200 text-slate-500">
                               <Clock size={10} className="mr-1" />
-                              {story.tareas_tecnicas.reduce((acc, t) => acc + t.estimado_horas, 0)}h totales
+                              {(story.tareas_tecnicas || []).reduce((acc, t) => acc + t.estimado_horas, 0)}h totales
                            </Badge>
                         </div>
                       </div>
