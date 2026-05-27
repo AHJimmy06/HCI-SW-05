@@ -109,13 +109,13 @@ function NavContent() {
 
   const handleProjectSelect = (projectId: string) => {
     if (selectedOrg) {
-      navigate(`/dashboard/project/${projectId}`);
+      navigate(`/dashboard/projects/${projectId}`);
     }
   };
 
   // Check if we're in a project dashboard context
   const currentProjectId = params.projectId
-    || (location.pathname.startsWith('/dashboard/project/') ? location.pathname.split('/').pop() : null)
+    || (location.pathname.includes('/dashboard/projects/') ? location.pathname.split('/').pop() : null)
     || sessionStorage.getItem('active_project_id');
 
   const isInProjectContext = !!currentProjectId;
@@ -123,12 +123,12 @@ function NavContent() {
   // Redirección de seguridad para Deep Links
   useEffect(() => {
     const path = location.pathname;
-    if (path === '/guia' && !validationStatus.plan.isValid) {
-navigate('/dashboard/plan', { replace: true });
-    } else if (path === '/guia' && !validationStatus.plan.isValid) {
-      navigate('/dashboard/guia', { replace: true });
-    } else if (path === '/registro' && !validationStatus.guide.isValid) {
-      navigate('/dashboard/registro', { replace: true });
+    if (path.includes('/test-plan/guide') && !validationStatus.plan.isValid) {
+      navigate('/dashboard/test-plan/new', { replace: true });
+    } else if (path.includes('/test-plan/record') && !validationStatus.guide.isValid) {
+      navigate('/dashboard/test-plan/guide', { replace: true });
+    } else if (path.includes('/test-plan/synthesis') && !validationStatus.record.isValid) {
+      navigate('/dashboard/test-plan/record', { replace: true });
     }
   }, [location.pathname, validationStatus, navigate]);
 
@@ -145,7 +145,7 @@ navigate('/dashboard/plan', { replace: true });
     return false;
   };
 
-  const isWizardPage = ['/dashboard/plan', '/dashboard/guia', '/dashboard/registro', '/dashboard/sintesis'].includes(location.pathname);
+  const isWizardPage = location.pathname.includes('/dashboard/test-plan/');
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-primary/20 selection:text-primary">
@@ -264,18 +264,24 @@ navigate('/dashboard/plan', { replace: true });
               {/* Test Plan steps */}
               <nav className="flex items-center gap-1" aria-label="Navegación del plan de test">
                 {[
-                  { to: currentProjectId ? `/dashboard/project/${currentProjectId}` : "/dashboard", label: "Dashboard", icon: LayoutDashboard, step: null },
-                  { to: "/dashboard/plan", label: "Plan del Test", icon: ClipboardList, step: 'plan' },
-                  { to: "/dashboard/guia", label: "Guía de Moderación", icon: BookOpen, step: 'guide' },
-                  { to: "/dashboard/registro", label: "Registro", icon: Edit3, step: 'record' },
-                  { to: "/dashboard/sintesis", label: "Síntesis", icon: Filter, step: 'synthesis' },
+                  { to: currentProjectId ? `/dashboard/projects/${currentProjectId}` : "/dashboard", label: "Dashboard", icon: LayoutDashboard, step: null },
+                  { to: "/dashboard/test-plan/new", label: "Plan del Test", icon: ClipboardList, step: 'plan' },
+                  { to: "/dashboard/test-plan/guide", label: "Guía de Moderación", icon: BookOpen, step: 'guide' },
+                  { to: "/dashboard/test-plan/record", label: "Registro", icon: Edit3, step: 'record' },
+                  { to: "/dashboard/test-plan/synthesis", label: "Síntesis", icon: Filter, step: 'synthesis' },
                 ].map((item) => {
                   const disabled = !canNavigateTo(item.step as any);
                   const Icon = item.icon;
+                  const { currentPlanId } = useTestPlan();
+
                   // Plan del Test gets ?project= query param when in project context
+                  // Others get the /:id suffix
                   const getItemPath = () => {
-                    if (item.step === 'plan' && currentProjectId) {
-                      return `/dashboard/plan?project=${currentProjectId}`;
+                    if (item.step === 'plan') {
+                      return currentProjectId ? `${item.to}?project=${currentProjectId}` : item.to;
+                    }
+                    if (item.step && currentPlanId) {
+                      return `${item.to}/${currentPlanId}`;
                     }
                     return item.to;
                   };

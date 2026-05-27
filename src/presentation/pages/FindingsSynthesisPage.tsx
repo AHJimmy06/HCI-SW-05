@@ -157,7 +157,7 @@ export function FindingsSynthesisPage() {
 
       const getDashboardPath = () => {
         const projectId = sessionStorage.getItem('active_project_id');
-        if (projectId) return `/dashboard/project/${projectId}`;
+        if (projectId) return `/dashboard/projects/${projectId}`;
         return '/dashboard';
       };
 
@@ -501,7 +501,7 @@ export function FindingsSynthesisPage() {
               onClick={() => {
                 saveDraft();
                 const projectId = sessionStorage.getItem('active_project_id');
-                navigate(projectId ? `/dashboard/project/${projectId}` : '/dashboard');
+                navigate(projectId ? `/dashboard/projects/${projectId}` : '/dashboard');
               }}
               variant="outline"
               className="group border-2 border-slate-200 text-slate-500 hover:border-primary hover:text-primary px-8 py-4 rounded-2xl transition-all flex items-center gap-3 font-bold bg-white"

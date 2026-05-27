@@ -97,12 +97,12 @@ export function ProjectDetailPage() {
       observations: [],
       findings: []
     });
-    navigate("/dashboard/plan");
+    navigate("/dashboard/test-plan/new");
   };
 
   const handleNewPlan = () => {
     sessionStorage.setItem('active_project_id', projectId || '');
-    navigate(`/dashboard/plan?project=${projectId}`);
+    navigate(`/dashboard/test-plan/new?project=${projectId}`);
   };
 
   if (loading) {

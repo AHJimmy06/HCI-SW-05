@@ -27,38 +27,38 @@ function buildPrompt(plan: FullTestPlan): string {
     )
     .join("\n\n");
 
-  return `Eres un Product Owner experto en metodologías ágiles Scrum. Basándote en los hallazgos de una evaluación de usabilidad, genera un Sprint Backlog.
+  return `Actúa como un Senior Product Owner y Agile Coach experto en Scrum. Tu misión es transformar hallazgos de pruebas de usabilidad en un Sprint Backlog accionable.
 
- CONTEXTO DEL PRODUCTO:
+CONTEXTO DEL PRODUCTO:
 - Producto: ${plan.product_name}
 - Módulo: ${plan.module_name || "No especificado"}
 - Objetivo del test: ${plan.objective || "No definido"}
 - Perfil de usuario: ${plan.user_profile || "No definido"}
-- Metodología: SCRUM
 
- HALLAZGOS DEL TEST DE USABILIDAD:
- ${findingsText || "No se encontraron hallazgos en este test."}
+HALLAZGOS DE USABILIDAD (Prioriza según severidad y recomendación):
+${findingsText || "No se encontraron hallazgos específicos. Genera historias base para mejorar la usabilidad general del módulo."}
 
- REGLAS ESTRICTAS:
- - Genera como MÁXIMO 6 user stories y como MÁXIMO 12 tareas técnicas.
- - Cada bloque CSV debe comenzar con su línea de HEADER, seguida de las filas de datos.
- - NO uses JSON, NO markdown, NO explicaciones. Solo texto plano con los DOS CSVs.
- - El separador entre bloques es UNA LÍNEA VACÍA.
- - Los campos Description que contengan comas o saltos de línea deben ir entre comillas dobles.
- - Assignee en tareas siempre vacío ("").
- - El primer campo (ID) es numérico secuencial: 1, 2, 3...
+TAREA:
+Genera un Sprint Backlog que incluya Historias de Usuario (US) y Tareas Técnicas asociadas. Las US deben seguir el formato "Como [rol], quiero [acción] para [beneficio]" e incluir Criterios de Aceptación (AC).
 
- FORMATO EXACTO DE RESPUESTA:
+REGLAS DE FORMATO (CRÍTICO):
+1. Responde ÚNICAMENTE con los bloques CSV. SIN texto introductorio, SIN conclusiones, SIN bloques de código markdown.
+2. Usa exactamente estos encabezados de columna.
+3. Separador de bloques: Una línea vacía entre el bloque de Historias y el de Tareas.
+4. Escapado: Si un campo contiene comas, encuádralo entre comillas dobles (").
+5. Cantidad: Entre 3 y 6 Historias de Usuario, y entre 6 y 12 Tareas Técnicas.
 
- [CSV 1: HISTORIAS DE USUARIO]
- ID,Name,Type,Priority,Estimate,Status,Description
- 1,"Como [rol], quiero [acción] para [beneficio]. CRITERIOS: 1. [criterio] | 2. [criterio]",feature,Alta,3,To Do,"Descripción detallada"
- ...
+ESTRUCTURA EXACTA:
 
- [CSV 2: TAREAS TÉCNICAS]
- ID,Name,Assignee,Estimate,Status
- 1,Tarea técnica 1,"",4h,To Do
- ...`;
+[CSV 1: HISTORIAS DE USUARIO]
+ID,Name,Type,Priority,Estimate,Status,Description
+1,"Como [rol], quiero [acción] para [beneficio]. AC: 1. [criterio] | 2. [criterio]",feature,Alta,3,To Do,"Descripción basada en el hallazgo"
+...
+
+[CSV 2: TAREAS TÉCNICAS]
+ID,Name,Assignee,Estimate,Status
+1,Tarea técnica para implementar la US1,"",4h,To Do
+...`;
 }
 
 function parseResponse(content: string): SprintBacklogCSV {

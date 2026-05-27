@@ -11,15 +11,15 @@ interface NavigationButtonsProps {
 
 const steps: { id: string; path: string; stepName: StepName | 'dashboard' }[] = [
   { id: 'dashboard', path: '/dashboard', stepName: 'dashboard' },
-  { id: 'plan', path: '/dashboard/plan', stepName: 'plan' },
-  { id: 'guide', path: '/dashboard/guia', stepName: 'guide' },
-  { id: 'record', path: '/dashboard/registro', stepName: 'record' },
-  { id: 'synthesis', path: '/dashboard/sintesis', stepName: 'synthesis' },
+  { id: 'plan', path: '/dashboard/test-plan/new', stepName: 'plan' },
+  { id: 'guide', path: '/dashboard/test-plan/guide', stepName: 'guide' },
+  { id: 'record', path: '/dashboard/test-plan/record', stepName: 'record' },
+  { id: 'synthesis', path: '/dashboard/test-plan/synthesis', stepName: 'synthesis' },
 ];
 
 export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
   const navigate = useNavigate();
-  const { validationStatus, setAttemptedNext, saveDraft } = useTestPlan();
+  const { validationStatus, setAttemptedNext, saveDraft, currentPlanId } = useTestPlan();
   const [showWarning, setShowWarning] = useState(false);
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
 
@@ -46,15 +46,26 @@ export function NavigationButtons({ currentStep }: NavigationButtonsProps) {
   // Get project context for dashboard navigation
   const getDashboardPath = () => {
     const projectId = sessionStorage.getItem('active_project_id');
-    if (projectId) return `/dashboard/project/${projectId}`;
+    if (projectId) return `/dashboard/projects/${projectId}`;
     return '/dashboard';
   };
 
   const getTargetPath = (step: typeof steps[0]) => {
     if (step.id === 'dashboard') return getDashboardPath();
-    // For wizard steps, inject projectId as query param
+    
+    // Construct target path with ID if available and not on 'new'
+    let targetPath = step.path;
+    if (currentPlanId && step.id !== 'plan') {
+      targetPath = `${step.path}/${currentPlanId}`;
+    }
+
+    // For wizard steps, inject projectId as query param if on 'new'
     const projectId = sessionStorage.getItem('active_project_id');
-    return projectId ? `${step.path}?project=${projectId}` : step.path;
+    if (step.id === 'plan' && projectId) {
+      targetPath = `${targetPath}?project=${projectId}`;
+    }
+    
+    return targetPath;
   };
 
   const handleNextClick = () => {

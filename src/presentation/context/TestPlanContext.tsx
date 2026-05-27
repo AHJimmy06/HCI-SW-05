@@ -22,6 +22,7 @@ interface TestPlanContextType {
   isDirty: boolean;
   isDraftSaved: boolean;
   lastSaved: Date | null;
+  currentPlanId: string | null;
   validationStatus: Record<StepName, ValidationState>;
   validateCurrentStep: (step: StepName) => boolean;
   saveDraft: () => void;
@@ -294,13 +295,15 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
     return validationStatus[step]?.isValid || false;
   }, [validationStatus]);
 
+  const currentPlanId = data.test_plan_id || null;
+
   const value = useMemo(() => ({
     data, updatePlan, updateTasks, addTask, deleteTask,
     updateObservations, addObservation, 
     updateFindings, addFinding, updateTestPlanId,
     addMultipleTasks, addMultipleObservations, resetData,
     loadFullPlan, isStepComplete, isEditing,
-    isDirty, isDraftSaved, lastSaved, validationStatus, validateCurrentStep, saveDraft, attemptedNext, setAttemptedNext,
+    isDirty, isDraftSaved, lastSaved, currentPlanId, validationStatus, validateCurrentStep, saveDraft, attemptedNext, setAttemptedNext,
     hasDraft, clearDraft
   }), [
     data, updatePlan, updateTasks, addTask, deleteTask,
@@ -308,7 +311,7 @@ export const TestPlanProvider = ({ children }: { children: ReactNode }) => {
     updateFindings, addFinding, updateTestPlanId,
     addMultipleTasks, addMultipleObservations, resetData,
     loadFullPlan, isStepComplete, isEditing,
-    isDirty, isDraftSaved, lastSaved, validationStatus, validateCurrentStep, saveDraft, attemptedNext,
+    isDirty, isDraftSaved, lastSaved, currentPlanId, validationStatus, validateCurrentStep, saveDraft, attemptedNext,
     hasDraft, clearDraft
   ]);
 

@@ -67,19 +67,23 @@ export function AppRouter() {
               <Layout />
             </ProtectedRoute>
           }>
-            {/* Wizard pages */}
+            {/* Main view */}
             <Route index element={<DashboardPage />} />
-            <Route path="plan" element={<TestPlanFormPage />} />
-            <Route path="guia" element={<ModeratorGuidePage />} />
-            <Route path="registro" element={<ObservationRecordPage />} />
-            <Route path="sintesis" element={<FindingsSynthesisPage />} />
+            <Route path="projects/:projectId" element={<DashboardPage />} />
 
-            {/* Collaboration pages */}
+            {/* Wizard / Test Plan workflow */}
+            <Route path="test-plan">
+              <Route path="new" element={<ProtectedRoute requireProject><TestPlanFormPage /></ProtectedRoute>} />
+              <Route path="view/:testPlanId" element={<TestPlanDetailPage />} />
+              <Route path="guide/:testPlanId" element={<ModeratorGuidePage />} />
+              <Route path="record/:testPlanId" element={<ObservationRecordPage />} />
+              <Route path="synthesis/:testPlanId" element={<FindingsSynthesisPage />} />
+            </Route>
+
+            {/* Collaboration & Organization */}
             <Route path="organizations" element={<OrganizationsPage />} />
             <Route path="organizations/:orgId" element={<OrganizationDetailPage />} />
             <Route path="organizations/:orgId/projects/:projectId" element={<ProjectDetailPage />} />
-            <Route path="project/:projectId" element={<DashboardPage />} />
-            <Route path="test-plan/:testPlanId" element={<TestPlanDetailPage />} />
             <Route path="join-requests" element={<JoinRequestsPage />} />
           </Route>
 
